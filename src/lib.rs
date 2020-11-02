@@ -1,3 +1,3 @@
-//!
-#[cfg(test)]
-mod tests {}
+pub use bl602_pac as pac;
+
+pub mod gpio;

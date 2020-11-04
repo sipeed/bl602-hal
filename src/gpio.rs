@@ -1,10 +1,19 @@
 //! General Purpose Input/Output (GPIO)
 use core::marker::PhantomData;
+use crate::pac;
 
-/// Extension trait to split a GPIO peripheral into independent pins and registers
-pub trait GpioExt {
-    /// Splits the GPIO block into independent pins and registers
+/// Extension trait to split GLB peripheral into independent pins, registers and other modules
+pub trait GlbExt {
+    /// Splits the register block into independent pins and modules
     fn split(self) -> Parts;
+}
+
+impl GlbExt for pac::GLB {
+    fn split(self) -> Parts {
+        Parts {
+            pin5: Pin5 { _mode: PhantomData },
+        }
+    }
 }
 
 /*
@@ -56,25 +65,12 @@ pub struct AF7;
 pub struct AF8;
 /// Alternate function 9 (type state)
 pub struct AF9;
-/// Alternate function 10 (type state)
-pub struct AF10;
 // AF11 is SwGpio, ignore
 /// Alternate function 14 (type state)
 pub struct AF14;
 
-/// Digital function that supports pull-up or pull-down
-pub trait Digital {}
-
-impl Digital for Alternate<AF1> {}
-impl Digital for Alternate<AF2> {}
-impl Digital for Alternate<AF4> {}
-impl Digital for Alternate<AF6> {}
-impl Digital for Alternate<AF7> {}
-impl Digital for Alternate<AF8> {}
-impl Digital for Alternate<AF9> {}
-// no AF10; AF10 is Analog
-// no AF11; AF11 is SwGpio
-impl Digital for Alternate<AF14> {}
+/// Alternate function 10 (type state)
+pub struct Analog;
 
 // There are Pin0 to Pin22, totally 23 pins
 
@@ -82,73 +78,113 @@ pub use self::pin::*;
 
 /// Gpio parts
 pub struct Parts {
-    pub pin0: Pin0<Input<Floating>>,
+    pub pin5: Pin5<Input<Floating>>,
 }
 
 /// Gpio pins
 pub mod pin {
     use core::marker::PhantomData;
+    use core::convert::Infallible;
+    use crate::pac;
     use super::*;
+    use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin, toggleable};
 
     /// Pin
-    pub struct Pin0<MODE> {
-        _mode: PhantomData<MODE>,
+    pub struct Pin5<MODE> {
+        pub(crate) _mode: PhantomData<MODE>,
     }
 
-    impl<MODE> Pin0<MODE> {
+    impl<MODE> Pin5<MODE> {
         /// Configures the pin to operate as a push-pull output pin.
-        pub fn into_push_pull_output(self) -> Pin0<Output<PushPull>> {
-            todo!()
+        pub fn into_push_pull_output(self) -> Pin5<Output<PushPull>> {
+            // todo: is this actually a push-pull mode?
+            let glb = unsafe { &*pac::GLB::ptr() };
+            glb.gpio_cfgctl2.modify(|_, w| unsafe { w
+                .reg_gpio_5_func_sel().bits(11) // GPIO_FUN_SWGPIO
+                .reg_gpio_5_ie().clear_bit() // output
+                .reg_gpio_5_pu().clear_bit()
+                .reg_gpio_5_pd().clear_bit()
+                .reg_gpio_5_drv().bits(0) // disabled
+                .reg_gpio_5_smt().clear_bit()
+            });
+            Pin5 { _mode: PhantomData }
         }
         /// Configures the pin to operate as an open-drain output pin.
-        pub fn into_open_drain_output(self) -> Pin0<Output<OpenDrain>> {
+        pub fn into_open_drain_output(self) -> Pin5<Output<OpenDrain>> {
             todo!()
         }
         /// Configures the pin to operate as a floating input pin.
-        pub fn into_floating_input(self) -> Pin0<Input<Floating>> {
-            todo!()
+        pub fn into_floating_input(self) -> Pin5<Input<Floating>> {
+            let glb = unsafe { &*pac::GLB::ptr() };
+            glb.gpio_cfgctl2.modify(|_, w| unsafe { w
+                .reg_gpio_5_func_sel().bits(11) // GPIO_FUN_SWGPIO
+                .reg_gpio_5_ie().set_bit() // input
+                .reg_gpio_5_pu().clear_bit()
+                .reg_gpio_5_pd().clear_bit()
+                .reg_gpio_5_drv().bits(0) // disabled
+                .reg_gpio_5_smt().clear_bit()
+            });
+            Pin5 { _mode: PhantomData }
         }
         /// Configures the pin to operate as a pull-up input pin.
-        pub fn into_pull_up_input(self) -> Pin0<Input<PullUp>> {
-            todo!()
+        pub fn into_pull_up_input(self) -> Pin5<Input<PullUp>> {
+            let glb = unsafe { &*pac::GLB::ptr() };
+            glb.gpio_cfgctl2.modify(|_, w| unsafe { w
+                .reg_gpio_5_func_sel().bits(11) // GPIO_FUN_SWGPIO
+                .reg_gpio_5_ie().set_bit() // input
+                .reg_gpio_5_pu().set_bit()
+                .reg_gpio_5_pd().clear_bit()
+                .reg_gpio_5_drv().bits(0) // disabled
+                .reg_gpio_5_smt().clear_bit()
+            });
+            Pin5 { _mode: PhantomData }
         }
         /// Configures the pin to operate as a pull-down input pin.
-        pub fn into_pull_down_input(self) -> Pin0<Input<PullDown>> {
-            todo!()
+        pub fn into_pull_down_input(self) -> Pin5<Input<PullDown>> {
+            let glb = unsafe { &*pac::GLB::ptr() };
+            glb.gpio_cfgctl2.modify(|_, w| unsafe { w
+                .reg_gpio_5_func_sel().bits(11) // GPIO_FUN_SWGPIO
+                .reg_gpio_5_ie().set_bit() // input
+                .reg_gpio_5_pu().clear_bit()
+                .reg_gpio_5_pd().set_bit()
+                .reg_gpio_5_drv().bits(0) // disabled
+                .reg_gpio_5_smt().clear_bit()
+            });
+            Pin5 { _mode: PhantomData }
         }
     }
 
-    impl<MODE> Pin0<MODE> {
+    impl<MODE> Pin5<MODE> {
         // todo: documents
-        pub fn into_af1(self) -> Pin0<Alternate<AF1>> {
+        pub fn into_af1(self) -> Pin5<Alternate<AF1>> {
             todo!()
         }
-        pub fn into_af2(self) -> Pin0<Alternate<AF2>> {
+        pub fn into_af2(self) -> Pin5<Alternate<AF2>> {
             todo!()
         }
-        pub fn into_af4(self) -> Pin0<Alternate<AF4>> {
+        pub fn into_af4(self) -> Pin5<Alternate<AF4>> {
             todo!()
         }
-        pub fn into_af6(self) -> Pin0<Alternate<AF6>> {
+        pub fn into_af6(self) -> Pin5<Alternate<AF6>> {
             todo!()
         }
-        pub fn into_af7(self) -> Pin0<Alternate<AF7>> {
+        pub fn into_af7(self) -> Pin5<Alternate<AF7>> {
             todo!()
         }
-        pub fn into_af8(self) -> Pin0<Alternate<AF8>> {
+        pub fn into_af8(self) -> Pin5<Alternate<AF8>> {
             todo!()
         }
-        pub fn into_af9(self) -> Pin0<Alternate<AF9>> {
+        pub fn into_af9(self) -> Pin5<Alternate<AF9>> {
             todo!()
         }
-        pub fn into_af10(self) -> Pin0<Alternate<AF10>> {
+        pub fn into_analog(self) -> Pin5<Analog> {
             todo!()
         }
-        pub fn into_af14(self) -> Pin0<Alternate<AF14>> {
+        pub fn into_af14(self) -> Pin5<Alternate<AF14>> {
             todo!()
         }
     }
-    impl<MODE: Digital> Pin0<Alternate<MODE>> {
+    impl<MODE> Pin5<Alternate<MODE>> {
         // 虽然有这些内部上下拉函数，内部上下拉很弱，大约44K，还是建议片外上拉
         // todo: english
         pub fn set_pull_up(&mut self) {
@@ -161,6 +197,50 @@ pub mod pin {
             todo!()
         }
     }
+
+    impl<MODE> InputPin for Pin5<Input<MODE>> {
+        type Error = Infallible;
+
+        fn try_is_high(&self) -> Result<bool, Self::Error> {
+            let glb = unsafe { &*pac::GLB::ptr() };
+            Ok(glb.gpio_cfgctl30.read().reg_gpio_5_i().bit_is_set())
+        }
+
+        fn try_is_low(&self) -> Result<bool, Self::Error> {
+            let glb = unsafe { &*pac::GLB::ptr() };
+            Ok(glb.gpio_cfgctl30.read().reg_gpio_5_i().bit_is_clear())
+        }
+    }
+
+    impl<MODE> OutputPin for Pin5<Output<MODE>> {
+        type Error = Infallible;
+
+        fn try_set_high(&mut self) -> Result<(), Self::Error> {
+            let glb = unsafe { &*pac::GLB::ptr() };
+            glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_5_o().set_bit());
+            Ok(())
+        }
+
+        fn try_set_low(&mut self) -> Result<(), Self::Error> {
+            let glb = unsafe { &*pac::GLB::ptr() };
+            glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_5_o().clear_bit());
+            Ok(())
+        }
+    }
+
+    impl<MODE> StatefulOutputPin for Pin5<Output<MODE>> {
+        fn try_is_set_high(&self) -> Result<bool, Self::Error> {
+            let glb = unsafe { &*pac::GLB::ptr() };
+            Ok(glb.gpio_cfgctl32.read().reg_gpio_5_o().bit_is_set())
+        }
+
+        fn try_is_set_low(&self) -> Result<bool, Self::Error> {
+            let glb = unsafe { &*pac::GLB::ptr() };
+            Ok(glb.gpio_cfgctl32.read().reg_gpio_5_o().bit_is_clear())
+        }
+    }
+
+    impl<MODE> toggleable::Default for Pin5<Output<MODE>> {}
 }
 
 // todo: generate macros

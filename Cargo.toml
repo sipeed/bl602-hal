@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 bl602-pac = { path = "../bl602-pac" }
+embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal" }

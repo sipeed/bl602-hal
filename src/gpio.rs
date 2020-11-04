@@ -1,5 +1,5 @@
 //! General Purpose Input/Output (GPIO)
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 /// Extension trait to split a GPIO peripheral into independent pins and registers
 pub trait GpioExt {
@@ -88,7 +88,7 @@ pub struct Parts {
 
 /// Gpio pins
 pub mod pin {
-    use std::marker::PhantomData;
+    use core::marker::PhantomData;
     use super::*;
 
     /// Pin

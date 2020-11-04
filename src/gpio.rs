@@ -58,8 +58,7 @@ pub struct AF8;
 pub struct AF9;
 /// Alternate function 10 (type state)
 pub struct AF10;
-/// Alternate function 11 (type state)
-pub struct AF11;
+// AF11 is SwGpio, ignore
 /// Alternate function 14 (type state)
 pub struct AF14;
 
@@ -74,7 +73,7 @@ impl Digital for Alternate<AF7> {}
 impl Digital for Alternate<AF8> {}
 impl Digital for Alternate<AF9> {}
 // no AF10; AF10 is Analog
-impl Digital for Alternate<AF11> {}
+// no AF11; AF11 is SwGpio
 impl Digital for Alternate<AF14> {}
 
 // There are Pin0 to Pin22, totally 23 pins
@@ -143,9 +142,6 @@ pub mod pin {
             todo!()
         }
         pub fn into_af10(self) -> Pin0<Alternate<AF10>> {
-            todo!()
-        }
-        pub fn into_af11(self) -> Pin0<Alternate<AF11>> {
             todo!()
         }
         pub fn into_af14(self) -> Pin0<Alternate<AF14>> {

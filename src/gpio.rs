@@ -1,4 +1,4 @@
-//! General Purpose Input/Output (GPIO)
+//! General Purpose Input/Output
 use core::marker::PhantomData;
 use crate::pac;
 
@@ -34,17 +34,8 @@ pub struct PullUp;
 pub struct Input<MODE> {
     _mode: PhantomData<MODE>,
 }
-
-/// Open drain input or output (type state)
-pub struct OpenDrain;
-
-/// Push pull output (type state)
-pub struct PushPull;
-
 /// Output mode (type state)
-pub struct Output<MODE> {
-    _mode: PhantomData<MODE>,
-}
+pub struct Output;
 
 /// Alternate function (type state)
 pub struct Alternate<MODE> {
@@ -96,22 +87,18 @@ pub mod pin {
 
     impl<MODE> Pin5<MODE> {
         /// Configures the pin to operate as a push-pull output pin.
-        pub fn into_push_pull_output(self) -> Pin5<Output<PushPull>> {
+        pub fn into_push_pull_output(self) -> Pin5<Output> {
             // todo: is this actually a push-pull mode?
             let glb = unsafe { &*pac::GLB::ptr() };
             glb.gpio_cfgctl2.modify(|_, w| unsafe { w
                 .reg_gpio_5_func_sel().bits(11) // GPIO_FUN_SWGPIO
                 .reg_gpio_5_ie().clear_bit() // output
                 .reg_gpio_5_pu().clear_bit()
-                .reg_gpio_5_pd().clear_bit()
+                .reg_gpio_5_pd().set_bit() // pull down (todo: verify)
                 .reg_gpio_5_drv().bits(0) // disabled
                 .reg_gpio_5_smt().clear_bit()
             });
             Pin5 { _mode: PhantomData }
-        }
-        /// Configures the pin to operate as an open-drain output pin.
-        pub fn into_open_drain_output(self) -> Pin5<Output<OpenDrain>> {
-            todo!()
         }
         /// Configures the pin to operate as a floating input pin.
         pub fn into_floating_input(self) -> Pin5<Input<Floating>> {
@@ -212,7 +199,7 @@ pub mod pin {
         }
     }
 
-    impl<MODE> OutputPin for Pin5<Output<MODE>> {
+    impl OutputPin for Pin5<Output> {
         type Error = Infallible;
 
         fn try_set_high(&mut self) -> Result<(), Self::Error> {
@@ -228,7 +215,7 @@ pub mod pin {
         }
     }
 
-    impl<MODE> StatefulOutputPin for Pin5<Output<MODE>> {
+    impl StatefulOutputPin for Pin5<Output> {
         fn try_is_set_high(&self) -> Result<bool, Self::Error> {
             let glb = unsafe { &*pac::GLB::ptr() };
             Ok(glb.gpio_cfgctl32.read().reg_gpio_5_o().bit_is_set())
@@ -240,7 +227,7 @@ pub mod pin {
         }
     }
 
-    impl<MODE> toggleable::Default for Pin5<Output<MODE>> {}
+    impl toggleable::Default for Pin5<Output> {}
 }
 
 // todo: generate macros

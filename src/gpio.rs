@@ -115,7 +115,7 @@ pub mod pin {
         }
         fn into_pin_with_mode<T>(&self, pu: bool, pd: bool, ie: bool) -> Pin5<T> {
             let glb = unsafe { &*pac::GLB::ptr() };
-            glb.gpio_cfgctl2.modify(|_, w| unsafe { w
+            glb.gpio_cfgctl2.write(|w| unsafe { w
                 .reg_gpio_5_func_sel().bits(11) // GPIO_FUN_SWGPIO
                 .reg_gpio_5_ie().bit(ie) // output
                 .reg_gpio_5_pu().bit(pu)
@@ -124,6 +124,19 @@ pub mod pin {
                 .reg_gpio_5_smt().clear_bit()
             });
             Pin5 { _mode: PhantomData }
+        }
+    }
+
+    impl<MODE> Pin5<Input<MODE>> {
+        /// Enable smitter GPIO input filter
+        pub fn enable_smitter(&mut self) {
+            let glb = unsafe { &*pac::GLB::ptr() };
+            glb.gpio_cfgctl2.modify(|_, w| w.reg_gpio_5_smt().set_bit());
+        }
+        /// Enable smitter GPIO output filter
+        pub fn disable_smitter(&mut self) {
+            let glb = unsafe { &*pac::GLB::ptr() };
+            glb.gpio_cfgctl2.modify(|_, w| w.reg_gpio_5_smt().clear_bit());
         }
     }
 

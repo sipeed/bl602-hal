@@ -115,6 +115,7 @@ where
         config: Config,
         pins: PINS
     ) -> Self {
+        // todo: clock
         // Bit inverse configuration; MsbFirst => 1, LsbFirst => 0
         let order_cfg = match config.order {
             Order::LsbFirst => false,

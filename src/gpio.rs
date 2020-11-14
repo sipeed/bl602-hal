@@ -155,13 +155,20 @@ pub trait UartPin<SIG> {}
 pub use self::pin::*;
 
 macro_rules! impl_glb {
-    ($($Pini: ident: ($pini: ident, $gpio_cfgctli: ident, $UartSigi: ident, $gpio_i: ident) ,)+) => {
+    ($($Pini: ident: ($pini: ident, $gpio_cfgctli: ident, $UartSigi: ident, $sigi: ident, $gpio_i: ident) ,)+) => {
 
 impl GlbExt for pac::GLB {
     fn split(self) -> Parts {
         Parts {
             $( $pini: $Pini { _mode: PhantomData }, )+
+            uart_mux0: UartMux0 { _mode: PhantomData },
+            uart_mux1: UartMux1 { _mode: PhantomData },
+            uart_mux2: UartMux2 { _mode: PhantomData },
+            uart_mux3: UartMux3 { _mode: PhantomData },
+            uart_mux4: UartMux4 { _mode: PhantomData },
             uart_mux5: UartMux5 { _mode: PhantomData },
+            uart_mux6: UartMux6 { _mode: PhantomData },
+            uart_mux7: UartMux7 { _mode: PhantomData },
         }
     }
 }
@@ -169,7 +176,14 @@ impl GlbExt for pac::GLB {
 /// Gpio parts
 pub struct Parts {
     $( pub $pini: $Pini<Input<Floating>>, )+
+    pub uart_mux0: UartMux0<Uart0Cts>,
+    pub uart_mux1: UartMux1<Uart0Cts>,
+    pub uart_mux2: UartMux2<Uart0Cts>,
+    pub uart_mux3: UartMux3<Uart0Cts>,
+    pub uart_mux4: UartMux4<Uart0Cts>,
     pub uart_mux5: UartMux5<Uart0Cts>,
+    pub uart_mux6: UartMux6<Uart0Cts>,
+    pub uart_mux7: UartMux7<Uart0Cts>,
 }
 
 /// Gpio pins
@@ -260,9 +274,11 @@ $(
         pub fn into_af6(self) -> $Pini<Alternate<AF6>> {
             todo!()
         }
-        pub fn into_uart_sig5(self) -> $Pini<Uart> {
-            // 5 -> GPIO_FUN_UART
-            self.into_pin_with_mode(5, true, false, true)
+        paste::paste! {
+            pub fn [<into_uart_ $sigi>](self) -> $Pini<Uart> {
+                // 5 -> GPIO_FUN_UART
+                self.into_pin_with_mode(5, true, false, true)
+            }
         }
         pub fn into_af8(self) -> $Pini<Alternate<AF8>> {
             todo!()
@@ -358,27 +374,27 @@ $(
 // There are Pin0 to Pin22, totally 23 pins
 // todo: generate macros
 impl_glb! {
-    Pin0: (pin0, gpio_cfgctl0, UartSig0, gpio_0),
-    Pin1: (pin1, gpio_cfgctl0, UartSig1, gpio_1),
-    Pin2: (pin2, gpio_cfgctl1, UartSig2, gpio_2),
-    Pin3: (pin3, gpio_cfgctl1, UartSig3, gpio_3),
-    Pin4: (pin4, gpio_cfgctl2, UartSig4, gpio_4),
-    Pin5: (pin5, gpio_cfgctl2, UartSig5, gpio_5),
-    Pin6: (pin6, gpio_cfgctl3, UartSig6, gpio_6),
-    Pin7: (pin7, gpio_cfgctl3, UartSig7, gpio_7),
-    Pin8: (pin8, gpio_cfgctl4, UartSig0, gpio_8),
-    Pin9: (pin9, gpio_cfgctl4, UartSig1, gpio_9),
-    Pin10: (pin10, gpio_cfgctl5, UartSig2, gpio_10),
-    Pin11: (pin11, gpio_cfgctl5, UartSig3, gpio_11),
-    Pin12: (pin12, gpio_cfgctl6, UartSig4, gpio_12),
-    Pin13: (pin13, gpio_cfgctl6, UartSig5, gpio_13),
-    Pin14: (pin14, gpio_cfgctl7, UartSig6, gpio_14),
-    Pin15: (pin15, gpio_cfgctl7, UartSig7, gpio_15),
-    Pin16: (pin16, gpio_cfgctl8, UartSig0, gpio_16),
-    Pin17: (pin17, gpio_cfgctl8, UartSig1, gpio_17),
-    Pin18: (pin18, gpio_cfgctl9, UartSig2, gpio_18),
-    Pin19: (pin19, gpio_cfgctl9, UartSig3, gpio_19),
-    Pin20: (pin20, gpio_cfgctl10, UartSig4, gpio_20),
-    Pin21: (pin21, gpio_cfgctl10, UartSig5, gpio_21),
-    Pin22: (pin22, gpio_cfgctl11, UartSig6, gpio_22),
+    Pin0: (pin0, gpio_cfgctl0, UartSig0, sig0, gpio_0),
+    Pin1: (pin1, gpio_cfgctl0, UartSig1, sig1, gpio_1),
+    Pin2: (pin2, gpio_cfgctl1, UartSig2, sig2, gpio_2),
+    Pin3: (pin3, gpio_cfgctl1, UartSig3, sig3, gpio_3),
+    Pin4: (pin4, gpio_cfgctl2, UartSig4, sig4, gpio_4),
+    Pin5: (pin5, gpio_cfgctl2, UartSig5, sig5, gpio_5),
+    Pin6: (pin6, gpio_cfgctl3, UartSig6, sig6, gpio_6),
+    Pin7: (pin7, gpio_cfgctl3, UartSig7, sig7, gpio_7),
+    Pin8: (pin8, gpio_cfgctl4, UartSig0, sig0, gpio_8),
+    Pin9: (pin9, gpio_cfgctl4, UartSig1, sig1, gpio_9),
+    Pin10: (pin10, gpio_cfgctl5, UartSig2, sig2, gpio_10),
+    Pin11: (pin11, gpio_cfgctl5, UartSig3, sig3, gpio_11),
+    Pin12: (pin12, gpio_cfgctl6, UartSig4, sig4, gpio_12),
+    Pin13: (pin13, gpio_cfgctl6, UartSig5, sig5, gpio_13),
+    Pin14: (pin14, gpio_cfgctl7, UartSig6, sig6, gpio_14),
+    Pin15: (pin15, gpio_cfgctl7, UartSig7, sig7, gpio_15),
+    Pin16: (pin16, gpio_cfgctl8, UartSig0, sig0, gpio_16),
+    Pin17: (pin17, gpio_cfgctl8, UartSig1, sig1, gpio_17),
+    Pin18: (pin18, gpio_cfgctl9, UartSig2, sig2, gpio_18),
+    Pin19: (pin19, gpio_cfgctl9, UartSig3, sig3, gpio_19),
+    Pin20: (pin20, gpio_cfgctl10, UartSig4, sig4, gpio_20),
+    Pin21: (pin21, gpio_cfgctl10, UartSig5, sig5, gpio_21),
+    Pin22: (pin22, gpio_cfgctl11, UartSig6, sig6, gpio_22),
 }

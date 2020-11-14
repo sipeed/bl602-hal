@@ -4,7 +4,7 @@
 use crate::pac;
 use crate::gpio::ClkCfg;
 use core::num::NonZeroU32;
-use embedded_time::rate::{Extensions, Hertz};
+use embedded_time::rate::Hertz;
 
 pub struct Clocks {
     uart_clk_div: u8,
@@ -64,10 +64,10 @@ impl Strict {
     /// panics. 
     pub fn freeze(self, clk_cfg: &mut ClkCfg) -> Clocks {
         drop(clk_cfg); // logically use its ownership
-        let uart_clk = self.target_uart_clk.map(|f| f.get()).unwrap_or(40.MHz().0);
+        let uart_clk = self.target_uart_clk.map(|f| f.get()).unwrap_or(40_000_000);
         let uart_clk_div = {
-            let ans = 160.MHz().0 / uart_clk;
-            if !(ans >= 1 && ans <= 7) || ans * uart_clk != 160.MHz().0 {
+            let ans = 160_000_000 / uart_clk;
+            if !(ans >= 1 && ans <= 7) || ans * uart_clk != 160_000_000 {
                 panic!("unreachable uart_clk")
             }
             ans as u8

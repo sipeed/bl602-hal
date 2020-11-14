@@ -52,27 +52,35 @@ macro_rules! impl_uart_sig {
     }
 
     impl<MODE> $UartMuxi<MODE> {
+        /// Configure the internal UART signal to UART0-RTS
         pub fn into_uart0_rts(self) -> $UartMuxi<Uart0Rts> {
             self.into_uart_mode(0)
         }
+        /// Configure the internal UART signal to UART0-CTS
         pub fn into_uart0_cts(self) -> $UartMuxi<Uart0Cts> {
             self.into_uart_mode(1)
         }
+        /// Configure the internal UART signal to UART0-TX
         pub fn into_uart0_tx(self) -> $UartMuxi<Uart0Tx> {
             self.into_uart_mode(2)
         }
+        /// Configure the internal UART signal to UART0-RX
         pub fn into_uart0_rx(self) -> $UartMuxi<Uart0Rx> {
             self.into_uart_mode(3)
         }
+        /// Configure the internal UART signal to UART1-RTS
         pub fn into_uart1_rts(self) -> $UartMuxi<Uart1Rts> {
             self.into_uart_mode(4)
         }
+        /// Configure the internal UART signal to UART1-CTS
         pub fn into_uart1_cts(self) -> $UartMuxi<Uart1Cts> {
             self.into_uart_mode(5)
         }
+        /// Configure the internal UART signal to UART1-TX
         pub fn into_uart1_tx(self) -> $UartMuxi<Uart1Tx> {
             self.into_uart_mode(6)
         }
+        /// Configure the internal UART signal to UART1-RX
         pub fn into_uart1_rx(self) -> $UartMuxi<Uart1Rx> {
             self.into_uart_mode(7)
         }
@@ -226,9 +234,8 @@ $(
         pub fn into_pull_down_input(self) -> $Pini<Input<PullDown>> {
             self.into_pin_with_mode(11, false, true, true)
         }
-        fn into_pin_with_mode<T>(&self, mode: u8, pu: bool, pd: bool, ie: bool) -> $Pini<T> {
-            let glb = unsafe { &*pac::GLB::ptr() };
-            
+        #[inline] fn into_pin_with_mode<T>(&self, mode: u8, pu: bool, pd: bool, ie: bool) -> $Pini<T> {
+            let glb = unsafe { &*pac::GLB::ptr() }; 
         paste::paste! {
             glb.$gpio_cfgctli.write(|w| unsafe { w
                 .[<reg_ $gpio_i _func_sel>]().bits(mode) 
@@ -275,6 +282,7 @@ $(
             todo!()
         }
         paste::paste! {
+            /// Configures the pin to UART alternate mode
             pub fn [<into_uart_ $sigi>](self) -> $Pini<Uart> {
                 // 7 -> GPIO_FUN_UART
                 self.into_pin_with_mode(7, true, false, true)
@@ -367,7 +375,6 @@ $(
     impl<MODE> toggleable::Default for $Pini<Output<MODE>> {}
 )+
 }
-
     };
 }
 

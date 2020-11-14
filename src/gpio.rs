@@ -105,6 +105,11 @@ macro_rules! impl_uart_sig {
     impl_uart_sig!(UartSig7, "Uart signal 7 (type state)", UartMux7, "Uart multiplexer peripherals for signal 7");
 }
 
+/// Clock configurator registers
+pub struct ClkCfg {
+    pub(crate) _ownership: (),
+}
+
 /*
 // todo: english
     在GPIO模式下，可以设置内部上下拉，以类型状态机模式设计
@@ -177,6 +182,7 @@ impl GlbExt for pac::GLB {
             uart_mux5: UartMux5 { _mode: PhantomData },
             uart_mux6: UartMux6 { _mode: PhantomData },
             uart_mux7: UartMux7 { _mode: PhantomData },
+            clk_cfg: ClkCfg { _ownership: () },
         }
     }
 }
@@ -192,6 +198,7 @@ pub struct Parts {
     pub uart_mux5: UartMux5<Uart0Cts>,
     pub uart_mux6: UartMux6<Uart0Cts>,
     pub uart_mux7: UartMux7<Uart0Cts>,
+    pub clk_cfg: ClkCfg,
 }
 
 /// Gpio pins

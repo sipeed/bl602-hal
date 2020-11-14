@@ -1,6 +1,7 @@
 //! Serial communication
 use embedded_time::rate::{Extensions, Baud};
 use crate::pac;
+use crate::clock::Clocks;
 
 /// Serial error
 #[derive(Debug)]
@@ -141,9 +142,23 @@ where
     pub fn uart0(
         uart: pac::UART,
         config: Config,
-        pins: PINS
+        pins: PINS,
+        clocks: Clocks,
     ) -> Self {
-        // todo: clock
+        // Initialize clocks and baudrate
+        let uart_clk = clocks.uart_clk();
+        let baud = config.baudrate.0;
+        let divisor = {
+            let ans = uart_clk.0 / baud;
+            if !(ans >= 1 && ans <= 65535) {
+                panic!("impossible baudrate");
+            }
+            ans as u16
+        };
+        uart.uart_bit_prd.write(|w| unsafe { w
+            .cr_urx_bit_prd().bits(divisor - 1)
+            .cr_utx_bit_prd().bits(divisor - 1)
+        });
         // Bit inverse configuration; MsbFirst => 1, LsbFirst => 0
         let order_cfg = match config.order {
             Order::LsbFirst => false,

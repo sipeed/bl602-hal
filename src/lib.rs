@@ -2,6 +2,7 @@
 
 pub use bl602_pac as pac;
 
+pub mod clock;
 pub mod gpio;
 pub mod serial;
 

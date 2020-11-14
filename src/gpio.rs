@@ -276,8 +276,8 @@ $(
         }
         paste::paste! {
             pub fn [<into_uart_ $sigi>](self) -> $Pini<Uart> {
-                // 5 -> GPIO_FUN_UART
-                self.into_pin_with_mode(5, true, false, true)
+                // 7 -> GPIO_FUN_UART
+                self.into_pin_with_mode(7, true, false, true)
             }
         }
         pub fn into_af8(self) -> $Pini<Alternate<AF8>> {

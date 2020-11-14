@@ -106,7 +106,10 @@ pub struct Serial<UART, PINS> {
     pins: PINS
 }
 
-impl<PINS> Serial<pac::UART, PINS> { // todo: there is uart0 and uart1
+impl<PINS> Serial<pac::UART, PINS> 
+where 
+    PINS: Pins<pac::UART>
+{ // todo: there is uart0 and uart1
     pub fn uart0(
         uart: pac::UART,
         config: Config,
@@ -144,8 +147,8 @@ impl<PINS> Serial<pac::UART, PINS> { // todo: there is uart0 and uart1
             .cr_utx_bit_cnt_d().bits(data_bits_cfg)
             .cr_utx_bit_cnt_p().bits(stop_bits_cfg) 
             .cr_utx_frm_en().set_bit() // [!] freerun on // todo
-            .cr_utx_cts_en().clear_bit() // no CTS // todo
-            .cr_utx_en().set_bit() // enable TX
+            .cr_utx_cts_en().bit(PINS::HAS_CTS)
+            .cr_utx_en().bit(PINS::HAS_TX)
         });
         // Uart RX config
         uart.urx_config.write(|w| unsafe { w
@@ -154,7 +157,7 @@ impl<PINS> Serial<pac::UART, PINS> { // todo: there is uart0 and uart1
             .cr_urx_bit_cnt_d().bits(data_bits_cfg)
             .cr_urx_deg_en().clear_bit() // no rx input de-glitch // todo
             .cr_urx_rts_sw_mode().clear_bit() // no RTS // todo
-            .cr_urx_en().set_bit() // enable RX
+            .cr_urx_en().bit(PINS::HAS_RX)
         });
         Serial { uart, pins }
     }
@@ -162,6 +165,11 @@ impl<PINS> Serial<pac::UART, PINS> { // todo: there is uart0 and uart1
     // pub fn listen(&mut self, event: Event) {
 
     // }
+
+    pub fn free(self) -> (pac::UART, PINS) {
+        // todo!
+        (self.uart, self.pins)
+    }
 }
 
 impl<PINS> embedded_hal::serial::Write<u8> for Serial<pac::UART, PINS> {
@@ -190,4 +198,73 @@ impl<PINS> embedded_hal::serial::Read<u8> for Serial<pac::UART, PINS> {
         let ans = self.uart.uart_fifo_rdata.read().bits();
         Ok((ans & 0xff) as u8)
     }
+}
+
+/// Serial transmit pins - DO NOT IMPLEMENT THIS TRAIT
+pub unsafe trait TxPin<UART> {}
+/// Serial receive pins - DO NOT IMPLEMENT THIS TRAIT
+pub unsafe trait RxPin<UART> {}
+/// Serial rts pins - DO NOT IMPLEMENT THIS TRAIT
+pub unsafe trait RtsPin<UART> {}
+/// Serial cts pins - DO NOT IMPLEMENT THIS TRAIT
+pub unsafe trait CtsPin<UART> {}
+
+
+macro_rules! impl_uart_pin {
+    ($(($UartSigi: ident, $UartMuxi: ident),)+) => {
+        use crate::gpio::*;
+        $(
+unsafe impl<PIN: UartPin<$UartSigi>> TxPin<pac::UART> for (PIN, $UartMuxi<Uart0Tx>) {}
+unsafe impl<PIN: UartPin<$UartSigi>> RxPin<pac::UART> for (PIN, $UartMuxi<Uart0Rx>) {}
+unsafe impl<PIN: UartPin<$UartSigi>> RtsPin<pac::UART> for (PIN, $UartMuxi<Uart0Rts>) {}
+unsafe impl<PIN: UartPin<$UartSigi>> CtsPin<pac::UART> for (PIN, $UartMuxi<Uart0Cts>) {}
+// unsafe impl<PIN: UartPin, SIG: UartSig<Uart1Tx>> TxPin<pac::UART> for (PIN, SIG) {}
+// unsafe impl<PIN: UartPin, SIG: UartSig<Uart1Rx>> RxPin<pac::UART> for (PIN, SIG) {}
+// unsafe impl<PIN: UartPin, SIG: UartSig<Uart1Rts>> RtsPin<pac::UART> for (PIN, SIG) {}
+// unsafe impl<PIN: UartPin, SIG: UartSig<Uart1Cts>> CtsPin<pac::UART> for (PIN, SIG) {}
+        )+
+    };
+}
+
+impl_uart_pin!(
+    (UartSig0, UartMux0), 
+    (UartSig1, UartMux1),
+    (UartSig2, UartMux2),
+    (UartSig3, UartMux3),
+    (UartSig4, UartMux4),
+    (UartSig5, UartMux5),
+    (UartSig6, UartMux6),
+    (UartSig7, UartMux7),
+);
+
+/// Serial pins - DO NOT IMPLEMENT THIS TRAIT
+pub unsafe trait Pins<UART> {
+    const HAS_TX: bool;
+    const HAS_RX: bool;
+    const HAS_RTS: bool;
+    const HAS_CTS: bool;
+}
+
+unsafe impl<UART, TX, RX> Pins<UART> for (TX, RX) 
+where 
+    TX: TxPin<UART>, 
+    RX: RxPin<UART>
+{
+    const HAS_TX: bool = true;
+    const HAS_RX: bool = true;
+    const HAS_RTS: bool = false;
+    const HAS_CTS: bool = false;
+}
+
+unsafe impl<UART, TX, RX, RTS, CTS> Pins<UART> for (TX, RX, RTS, CTS) 
+where 
+    TX: TxPin<UART>, 
+    RX: RxPin<UART>, 
+    RTS: RxPin<UART>, 
+    CTS: RxPin<UART>
+{
+    const HAS_TX: bool = true;
+    const HAS_RX: bool = true;
+    const HAS_RTS: bool = true;
+    const HAS_CTS: bool = true;
 }

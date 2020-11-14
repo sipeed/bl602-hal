@@ -11,3 +11,4 @@ bl602-pac = { path = "../bl602-pac" }
 embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal" }
 embedded-time = { git = "https://github.com/FluenTech/embedded-time" }
 nb = "*"
+paste = "1"

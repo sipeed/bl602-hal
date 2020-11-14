@@ -26,6 +26,34 @@ pub struct Config {
     pub wordlength: WordLength,
 }
 
+impl Config {
+    /// Sets the target baudrate
+    pub fn baudrate(mut self, baudrate: impl Into<Baud>) -> Self {
+        self.baudrate = baudrate.into();
+        self
+    }
+    /// Sets parity to no parity check
+    pub fn parity_none(mut self) -> Self {
+        self.parity = Parity::ParityNone;
+        self
+    }
+    /// Sets parity check to even
+    pub fn parity_even(mut self) -> Self {
+        self.parity = Parity::ParityEven;
+        self
+    }
+    /// Sets parity check to odd
+    pub fn parity_odd(mut self) -> Self {
+        self.parity = Parity::ParityOdd;
+        self
+    }
+    /// Sets the target stopbits
+    pub fn stopbits(mut self, stopbits: StopBits) -> Self {
+        self.stopbits = stopbits;
+        self
+    }
+}
+
 impl Default for Config {
     fn default() -> Config {
         Config {
@@ -39,7 +67,7 @@ impl Default for Config {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-/// Order of the bits that are transmitted and received on the wire.
+/// Order of the bits transmitted and received on the wire
 pub enum Order {
     /// Each byte is sent out LSB-first
     LsbFirst,
@@ -47,7 +75,7 @@ pub enum Order {
     MsbFirst,
 }
 
-/// Parity
+/// Parity check
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Parity {
     /// No parity check
@@ -71,7 +99,7 @@ pub enum StopBits {
     STOP1P5,
 }
 
-// todo
+/// Word length
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum WordLength {
     Five,

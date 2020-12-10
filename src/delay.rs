@@ -18,6 +18,14 @@ impl McycleDelay {
             core_frequency: freq
         }
     }
+
+    pub fn get_time() -> u64 {
+        riscv::register::mcycle::read64()
+    }
+
+    pub fn elapsed_us(time: u64) -> u64 {
+        riscv::register::mcycle::read64().wrapping_sub(time)
+    }
 }
 
 impl DelayUs<u64> for McycleDelay {

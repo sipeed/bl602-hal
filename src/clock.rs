@@ -5,7 +5,10 @@ use crate::pac;
 use crate::gpio::ClkCfg;
 use core::num::NonZeroU32;
 use embedded_time::rate::Hertz;
-
+use crate::pac::Peripherals;
+use num_enum::IntoPrimitive;
+use embedded_hal::blocking::delay::{DelayUs, DelayMs};
+use crate::delay::*;
 pub struct Clocks {
     uart_clk_div: u8,
 }
@@ -33,6 +36,68 @@ impl Clocks {
 /// 50.20MHz as the frequency error is smallest.
 pub struct Strict {
     target_uart_clk: Option<NonZeroU32>,
+}
+
+/// HBN root clock type definition
+#[derive(IntoPrimitive)]
+#[repr(u8)]
+enum HBN_ROOT_CLK_Type {
+    RC32M = 0,           // use RC32M as root clock
+    XTAL  = 1,           // use XTAL as root clock
+    PLL   = 2,           // use PLL as root clock
+}
+
+fn aon_power_on_xtal(dp: &mut Peripherals) {
+    dp.AON.rf_top_aon.modify(|_, w| unsafe { w
+        .pu_xtal_aon().set_bit()
+        .pu_xtal_buf_aon().set_bit()
+    });
+
+    let mut delaysrc = McycleDelay::new(dp.HBN.hbn_rsv2.read().bits());
+    let mut timeOut:u32 = 0;
+    delaysrc.try_delay_us(10);
+    while dp.AON.tsen.read().xtal_rdy().bit_is_clear() && timeOut < 120{
+        delaysrc.try_delay_us(10);
+        timeOut+=1;
+    }
+    // TODO: error out on timeout
+}
+
+fn glb_set_system_clk(dp: &mut Peripherals) {
+    /* reg_bclk_en = reg_hclk_en = reg_fclk_en = 1, cannot be zero */
+    // tmpVal = BL_SET_REG_BIT(tmpVal,GLB_REG_BCLK_EN);
+    // tmpVal = BL_SET_REG_BIT(tmpVal,GLB_REG_HCLK_EN);
+    // tmpVal = BL_SET_REG_BIT(tmpVal,GLB_REG_FCLK_EN);
+    // BL_WR_REG(GLB_BASE,GLB_CLK_CFG0,tmpVal);
+    dp.GLB.clk_cfg0.modify(|_, w| unsafe { w
+        .reg_bclk_en().set_bit()
+        .reg_hclk_en().set_bit()
+        .reg_fclk_en().set_bit()
+    });
+
+    //HBN_Set_ROOT_CLK_Sel(HBN_ROOT_CLK_RC32M)
+     /* Before config XTAL and PLL ,make sure root clk is from RC32M */
+    dp.HBN.hbn_glb.modify(|_,w| unsafe { w
+        .hbn_root_clk_sel().bits(HBN_ROOT_CLK_Type::RC32M.into())
+    });
+
+    dp.GLB.clk_cfg0.modify(|_,w| unsafe { w
+        .reg_hclk_div().bits(0)
+        .reg_bclk_div().bits(0)
+    });
+
+    // Update sysclock
+    dp.HBN.hbn_rsv2.write(|w| unsafe { w
+        .bits(32_000_000)
+    });
+
+    /* Select PKA clock from hclk */
+    dp.GLB.swrst_cfg2.modify(|_,w| unsafe { w
+        .pka_clk_sel().clear_bit()
+    });
+
+    /* AON_Power_On_XTAL(); */
+    aon_power_on_xtal(dp);
 }
 
 impl Strict {

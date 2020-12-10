@@ -146,6 +146,8 @@ fn aon_power_on_xtal(dp: &mut Peripherals) {
     // TODO: error out on timeout
 }
 
+/// Setup XTAL and PLL for system clock
+/// TODO: finish clock init - some parts are hard-coded for 40Mhz XTAL + 160Mhz target clock
 fn glb_set_system_clk(dp: &mut Peripherals) {
     /* reg_bclk_en = reg_hclk_en = reg_fclk_en = 1, cannot be zero */
     // tmpVal = BL_SET_REG_BIT(tmpVal,GLB_REG_BCLK_EN);
@@ -187,7 +189,55 @@ fn glb_set_system_clk(dp: &mut Peripherals) {
     let mut delay = McycleDelay::new(dp.HBN.hbn_rsv2.read().bits());
     delay.try_delay_us(55);
 
-    //TODO: finish clock init
+    // PDS_Enable_PLL_All_Clks()
+    dp.PDS.clkpll_output_en.modify(|r, w| unsafe {w
+        .bits(r.bits() | 0x1FF)
+    });
+    
+    /* reg_pll_en = 1, cannot be zero */
+    dp.GLB.clk_cfg0.modify(|r, w| unsafe {w
+        .reg_pll_en().set_bit()
+    });
+
+    /* select pll output clock before select root clock */
+    // sets to clkFreq-GLB_SYS_CLK_PLL48M, where PLL160M is 2 more than PLL48M
+    dp.GLB.clk_cfg0.modify(|r, w| unsafe {w
+        .reg_pll_sel().bits(2)
+    });
+
+    /* select root clock */
+    // TODO: bring back target clocks other than GLB_SYS_CLK_PLL160M
+
+    // L1C_IROM_2T_Access_Set(ENABLE);
+    //dp.L1C_IROM_2T_Access_Set
+    dp.L1C.l1c_config.modify(|r, w| unsafe {w
+        .irom_2t_access().set_bit()
+    });
+    // GLB_Set_System_CLK_Div(0,1);
+
+    dp.GLB.clk_cfg0.modify(|_,w| unsafe { w
+        .reg_hclk_div().bits(0)
+        .reg_bclk_div().bits(1)
+    });
+
+    // HBN_Set_ROOT_CLK_Sel(HBN_ROOT_CLK_PLL);
+    dp.HBN.hbn_glb.modify(|_,w| unsafe { w
+        .hbn_root_clk_sel().bits(0)
+    });
+    // SystemCoreClockSet(160*1000*1000);
+    dp.HBN.hbn_rsv2.write(|w| unsafe { w
+        .bits(160_000_000)
+    });
+
+    // GLB_CLK_SET_DUMMY_WAIT;
+    delay.try_delay_us(500);
+
+    // /* select PKA clock from 120M since we power up PLL */
+    // NOTE: This isn't documented in the datasheet!
+    // GLB_Set_PKA_CLK_Sel(GLB_PKA_CLK_PLL120M);
+    dp.GLB.swrst_cfg2.write(|w| unsafe { w
+        .pka_clk_sel().set_bit()
+    });
 }
 
 impl Strict {

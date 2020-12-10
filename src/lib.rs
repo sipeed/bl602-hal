@@ -5,6 +5,7 @@ pub use bl602_pac as pac;
 pub mod clock;
 pub mod gpio;
 pub mod serial;
+pub mod delay;
 
 /// HAL crate prelude
 pub mod prelude {

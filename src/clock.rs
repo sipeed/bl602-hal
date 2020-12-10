@@ -47,6 +47,89 @@ enum HBN_ROOT_CLK_Type {
     PLL   = 2,           // use PLL as root clock
 }
 
+/**
+ *  @brief PLL XTAL type definition
+ */
+ #[derive(IntoPrimitive)]
+ #[repr(u8)]
+enum GLB_PLL_XTAL_Type {
+    NONE        = 0,     // XTAL is none
+    XTAL_24M    = 1,     // XTAL is 24M
+    XTAL_32M    = 2,     // XTAL is 32M
+    XTAL_38P4M  = 3,     // XTAL is 38.4M
+    XTAL_40M    = 4,     // XTAL is 40M
+    XTAL_26M    = 5,     // XTAL is 26M
+    RC32M       = 6,     // XTAL is RC32M
+}
+
+/// Minimal implementation of power-on pll. Currently hard-coded to 40M xtal
+fn pds_power_on_pll(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type) {
+    let mut delay = McycleDelay::new(dp.HBN.hbn_rsv2.read().bits());
+
+    dp.PDS.pu_rst_clkpll.modify(|_r, w| unsafe {w
+        .pu_clkpll_sfreg().set_bit()
+    });
+
+    //DelayUs(5);
+    delay.try_delay_us(5);
+
+    /* pu_clkpll=1 */
+    dp.PDS.pu_rst_clkpll.modify(|_r, w| unsafe {w
+        .pu_clkpll().set_bit()
+    });
+
+    /* clkpll_pu_cp=1 */
+    /* clkpll_pu_pfd=1 */
+    /* clkpll_pu_fbdv=1 */
+    /* clkpll_pu_postdiv=1 */
+    dp.PDS.pu_rst_clkpll.modify(|_r, w| unsafe {w
+        .clkpll_pu_cp().set_bit()
+        .clkpll_pu_pfd().set_bit()
+        .clkpll_pu_fbdv().set_bit()
+        .clkpll_pu_postdiv().set_bit()
+    });
+    //DelayUs(5);
+    delay.try_delay_us(5);
+
+    // /* clkpll_sdm_reset=1 */
+    // tmpVal=BL_RD_REG(PDS_BASE,PDS_PU_RST_CLKPLL);
+    // tmpVal=BL_SET_REG_BIT(tmpVal,PDS_CLKPLL_SDM_RESET);
+    // BL_WR_REG(PDS_BASE,PDS_PU_RST_CLKPLL,tmpVal);
+    dp.PDS.pu_rst_clkpll.modify(|_r, w| unsafe {w
+        .clkpll_sdm_reset().set_bit()
+    });
+    // BL602_Delay_US(1);
+    delay.try_delay_us(1);
+
+    // /* clkpll_reset_fbdv=1 */
+    // tmpVal=BL_RD_REG(PDS_BASE,PDS_PU_RST_CLKPLL);
+    // tmpVal=BL_SET_REG_BIT(tmpVal,PDS_CLKPLL_RESET_FBDV);
+    // BL_WR_REG(PDS_BASE,PDS_PU_RST_CLKPLL,tmpVal);
+    dp.PDS.pu_rst_clkpll.modify(|_r, w| unsafe {w
+        .clkpll_reset_fbdv().set_bit()
+    });
+    // BL602_Delay_US(2);
+    delay.try_delay_us(2);
+
+    // /* clkpll_reset_fbdv=0 */
+    // tmpVal=BL_RD_REG(PDS_BASE,PDS_PU_RST_CLKPLL);
+    // tmpVal=BL_CLR_REG_BIT(tmpVal,PDS_CLKPLL_RESET_FBDV);
+    // BL_WR_REG(PDS_BASE,PDS_PU_RST_CLKPLL,tmpVal);
+    dp.PDS.pu_rst_clkpll.modify(|_r, w| unsafe {w
+        .clkpll_reset_fbdv().clear_bit()
+    });
+    // BL602_Delay_US(1);
+    delay.try_delay_us(1);
+
+    // /* clkpll_sdm_reset=0 */
+    // tmpVal=BL_RD_REG(PDS_BASE,PDS_PU_RST_CLKPLL);
+    // tmpVal=BL_CLR_REG_BIT(tmpVal,PDS_CLKPLL_SDM_RESET);
+    // BL_WR_REG(PDS_BASE,PDS_PU_RST_CLKPLL,tmpVal);
+    dp.PDS.pu_rst_clkpll.modify(|_r, w| unsafe {w
+        .clkpll_sdm_reset().clear_bit()
+    });
+}
+
 fn aon_power_on_xtal(dp: &mut Peripherals) {
     dp.AON.rf_top_aon.modify(|_, w| unsafe { w
         .pu_xtal_aon().set_bit()
@@ -98,6 +181,13 @@ fn glb_set_system_clk(dp: &mut Peripherals) {
 
     /* AON_Power_On_XTAL(); */
     aon_power_on_xtal(dp);
+
+    /* always power up PLL and enable all PLL clock output */
+    pds_power_on_pll(dp, GLB_PLL_XTAL_Type::XTAL_40M);
+    let mut delay = McycleDelay::new(dp.HBN.hbn_rsv2.read().bits());
+    delay.try_delay_us(55);
+
+    //TODO: finish clock init
 }
 
 impl Strict {

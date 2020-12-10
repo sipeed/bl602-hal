@@ -71,7 +71,7 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type) {
     });
 
     //DelayUs(5);
-    delay.try_delay_us(5);
+    delay.try_delay_us(5).unwrap();
 
     /* pu_clkpll=1 */
     dp.PDS.pu_rst_clkpll.modify(|_r, w| unsafe {w
@@ -89,7 +89,7 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type) {
         .clkpll_pu_postdiv().set_bit()
     });
     //DelayUs(5);
-    delay.try_delay_us(5);
+    delay.try_delay_us(5).unwrap();
 
     // /* clkpll_sdm_reset=1 */
     // tmpVal=BL_RD_REG(PDS_BASE,PDS_PU_RST_CLKPLL);
@@ -99,7 +99,7 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type) {
         .clkpll_sdm_reset().set_bit()
     });
     // BL602_Delay_US(1);
-    delay.try_delay_us(1);
+    delay.try_delay_us(1).unwrap();
 
     // /* clkpll_reset_fbdv=1 */
     // tmpVal=BL_RD_REG(PDS_BASE,PDS_PU_RST_CLKPLL);
@@ -109,7 +109,7 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type) {
         .clkpll_reset_fbdv().set_bit()
     });
     // BL602_Delay_US(2);
-    delay.try_delay_us(2);
+    delay.try_delay_us(2).unwrap();
 
     // /* clkpll_reset_fbdv=0 */
     // tmpVal=BL_RD_REG(PDS_BASE,PDS_PU_RST_CLKPLL);
@@ -119,7 +119,7 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type) {
         .clkpll_reset_fbdv().clear_bit()
     });
     // BL602_Delay_US(1);
-    delay.try_delay_us(1);
+    delay.try_delay_us(1).unwrap();
 
     // /* clkpll_sdm_reset=0 */
     // tmpVal=BL_RD_REG(PDS_BASE,PDS_PU_RST_CLKPLL);
@@ -138,7 +138,7 @@ fn aon_power_on_xtal(dp: &mut Peripherals) {
 
     let mut delaysrc = McycleDelay::new(dp.HBN.hbn_rsv2.read().bits());
     let mut timeOut:u32 = 0;
-    delaysrc.try_delay_us(10);
+    delaysrc.try_delay_us(10).unwrap();
     while dp.AON.tsen.read().xtal_rdy().bit_is_clear() && timeOut < 120{
         delaysrc.try_delay_us(10);
         timeOut+=1;
@@ -187,7 +187,7 @@ fn glb_set_system_clk(dp: &mut Peripherals) {
     /* always power up PLL and enable all PLL clock output */
     pds_power_on_pll(dp, GLB_PLL_XTAL_Type::XTAL_40M);
     let mut delay = McycleDelay::new(dp.HBN.hbn_rsv2.read().bits());
-    delay.try_delay_us(55);
+    delay.try_delay_us(55).unwrap();
 
     // PDS_Enable_PLL_All_Clks()
     dp.PDS.clkpll_output_en.modify(|r, w| unsafe {w
@@ -230,7 +230,7 @@ fn glb_set_system_clk(dp: &mut Peripherals) {
     });
 
     // GLB_CLK_SET_DUMMY_WAIT;
-    delay.try_delay_us(500);
+    delay.try_delay_us(500).unwrap();
 
     // /* select PKA clock from 120M since we power up PLL */
     // NOTE: This isn't documented in the datasheet!

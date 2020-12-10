@@ -6,7 +6,6 @@ use crate::gpio::ClkCfg;
 use core::num::NonZeroU32;
 use embedded_time::rate::Hertz;
 use crate::pac::Peripherals;
-use num_enum::IntoPrimitive;
 use embedded_hal::blocking::delay::{DelayUs, DelayMs};
 use crate::delay::*;
 pub struct Clocks {
@@ -39,7 +38,6 @@ pub struct Strict {
 }
 
 /// HBN root clock type definition
-#[derive(IntoPrimitive)]
 #[repr(u8)]
 enum HBN_ROOT_CLK_Type {
     RC32M = 0,           // use RC32M as root clock
@@ -50,7 +48,6 @@ enum HBN_ROOT_CLK_Type {
 /**
  *  @brief PLL XTAL type definition
  */
- #[derive(IntoPrimitive)]
  #[repr(u8)]
 enum GLB_PLL_XTAL_Type {
     NONE        = 0,     // XTAL is none
@@ -163,7 +160,7 @@ fn glb_set_system_clk(dp: &mut Peripherals) {
     //HBN_Set_ROOT_CLK_Sel(HBN_ROOT_CLK_RC32M)
      /* Before config XTAL and PLL ,make sure root clk is from RC32M */
     dp.HBN.hbn_glb.modify(|_,w| unsafe { w
-        .hbn_root_clk_sel().bits(HBN_ROOT_CLK_Type::RC32M.into())
+        .hbn_root_clk_sel().bits(0)
     });
 
     dp.GLB.clk_cfg0.modify(|_,w| unsafe { w

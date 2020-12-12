@@ -145,7 +145,7 @@ fn aon_power_on_xtal(dp: &mut Peripherals) {
 
 /// Setup XTAL and PLL for system clock
 /// TODO: finish clock init - some parts are hard-coded for 40Mhz XTAL + 160Mhz target clock
-fn glb_set_system_clk(dp: &mut Peripherals) {
+pub fn glb_set_system_clk(dp: &mut Peripherals) {
     /* reg_bclk_en = reg_hclk_en = reg_fclk_en = 1, cannot be zero */
     // tmpVal = BL_SET_REG_BIT(tmpVal,GLB_REG_BCLK_EN);
     // tmpVal = BL_SET_REG_BIT(tmpVal,GLB_REG_HCLK_EN);

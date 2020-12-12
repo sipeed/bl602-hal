@@ -139,7 +139,7 @@ fn aon_power_on_xtal(dp: &mut Peripherals) {
     let mut timeOut:u32 = 0;
     delaysrc.try_delay_us(10).unwrap();
     while dp.AON.tsen.read().xtal_rdy().bit_is_clear() && timeOut < 120{
-        delaysrc.try_delay_us(10);
+        delaysrc.try_delay_us(10).unwrap();
         timeOut+=1;
     }
     // TODO: error out on timeout

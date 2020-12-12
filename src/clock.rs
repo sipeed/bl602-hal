@@ -38,6 +38,7 @@ pub struct Strict {
 }
 
 /// HBN root clock type definition
+#[allow(dead_code)]
 #[repr(u8)]
 enum HBN_ROOT_CLK_Type {
     RC32M = 0,           // use RC32M as root clock
@@ -48,6 +49,7 @@ enum HBN_ROOT_CLK_Type {
 /**
  *  @brief PLL XTAL type definition
  */
+ #[allow(dead_code)]
  #[repr(u8)]
 enum GLB_PLL_XTAL_Type {
     NONE        = 0,     // XTAL is none

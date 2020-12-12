@@ -219,7 +219,7 @@ fn glb_set_system_clk(dp: &mut Peripherals) {
 
     // HBN_Set_ROOT_CLK_Sel(HBN_ROOT_CLK_PLL);
     dp.HBN.hbn_glb.modify(|_,w| unsafe { w
-        .hbn_root_clk_sel().bits(0)
+        .hbn_root_clk_sel().bits(0b10)
     });
     // SystemCoreClockSet(160*1000*1000);
     dp.HBN.hbn_rsv2.write(|w| unsafe { w
@@ -227,7 +227,11 @@ fn glb_set_system_clk(dp: &mut Peripherals) {
     });
 
     // GLB_CLK_SET_DUMMY_WAIT;
-    delay.try_delay_us(500).unwrap();
+    // This was a set of 8 NOP instructions. at 32mhz, this is 1/4 of a us
+    // but since we just changed our clock source, we'll wait the equivalent of 1us worth
+    // of clocks at 160Mhz (this *should* be much longer than necessary)
+    let mut delay = McycleDelay::new(dp.HBN.hbn_rsv2.read().bits());
+    delay.try_delay_us(1).unwrap();
 
     // /* select PKA clock from 120M since we power up PLL */
     // NOTE: This isn't documented in the datasheet!

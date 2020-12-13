@@ -146,7 +146,7 @@ fn aon_power_on_xtal(dp: &mut Peripherals) {
 }
 
 fn hbn_set_root_clk_sel(dp: &mut Peripherals, sel: HBN_ROOT_CLK_Type){
-     dp.GLB.clk_cfg0.modify(|r,w| unsafe { w
+    dp.HBN.hbn_glb.modify(|r,w| unsafe { w
         .hbn_root_clk_sel().bits(
             match sel {
                 HBN_ROOT_CLK_RC32M=>  0b00u8,

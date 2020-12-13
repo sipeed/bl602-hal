@@ -145,6 +145,18 @@ fn aon_power_on_xtal(dp: &mut Peripherals) {
     // TODO: error out on timeout
 }
 
+fn hbn_set_root_clk_sel(dp: &mut Peripherals, sel: HBN_ROOT_CLK_Type){
+     dp.GLB.clk_cfg0.modify(|r,w| unsafe { w
+        .hbn_root_clk_sel().bits(
+            match sel {
+                HBN_ROOT_CLK_RC32M=>  0b00u8,
+                HBN_ROOT_CLK_XTAL => 0b01u8,
+                HBN_ROOT_CLK_PLL => r.hbn_root_clk_sel().bits() as u8 | 0b10u8
+            }
+        )
+    });
+}
+
 /// Setup XTAL and PLL for system clock
 /// TODO: finish clock init - some parts are hard-coded for 40Mhz XTAL + 160Mhz target clock
 pub fn glb_set_system_clk(dp: &mut Peripherals) {
@@ -161,9 +173,7 @@ pub fn glb_set_system_clk(dp: &mut Peripherals) {
 
     //HBN_Set_ROOT_CLK_Sel(HBN_ROOT_CLK_RC32M)
      /* Before config XTAL and PLL ,make sure root clk is from RC32M */
-    dp.HBN.hbn_glb.modify(|_,w| unsafe { w
-        .hbn_root_clk_sel().bits(0)
-    });
+    hbn_set_root_clk_sel(dp, HBN_ROOT_CLK_Type::RC32M);
 
     dp.GLB.clk_cfg0.modify(|_,w| unsafe { w
         .reg_hclk_div().bits(0)
@@ -220,9 +230,7 @@ pub fn glb_set_system_clk(dp: &mut Peripherals) {
     });
 
     // HBN_Set_ROOT_CLK_Sel(HBN_ROOT_CLK_PLL);
-    dp.HBN.hbn_glb.modify(|_,w| unsafe { w
-        .hbn_root_clk_sel().bits(0b10)
-    });
+    hbn_set_root_clk_sel(dp, HBN_ROOT_CLK_Type::PLL);
     // SystemCoreClockSet(160*1000*1000);
     dp.HBN.hbn_rsv2.write(|w| unsafe { w
         .bits(160_000_000)

@@ -72,17 +72,7 @@ pub fn SystemCoreClockGet(dp: &mut Peripherals) -> u32 {
 }
 
 fn glb_set_system_clk_div(dp: &mut Peripherals, hclkdiv:u8, bclkdiv:u8){
-    // uint32_t tmpVal;
-
     // /* recommended: fclk<=160MHz, bclk<=80MHz */
-    // tmpVal=BL_RD_REG(GLB_BASE,GLB_CLK_CFG0);
-    // tmpVal=BL_SET_REG_BITS_VAL(tmpVal,GLB_REG_HCLK_DIV,hclkDiv);
-    // tmpVal=BL_SET_REG_BITS_VAL(tmpVal,GLB_REG_BCLK_DIV,bclkDiv);
-    // BL_WR_REG(GLB_BASE,GLB_CLK_CFG0,tmpVal);
-    // GLB_REG_BCLK_DIS_TRUE;
-    // GLB_REG_BCLK_DIS_FALSE;
-    // SystemCoreClockSet(SystemCoreClockGet()/((uint16_t)hclkDiv+1));
-
     let glb_reg_bclk_dis = 0x40000FFC as * mut u32;
     dp.GLB.clk_cfg0.modify(|_,w| unsafe { w
         .reg_hclk_div().bits(hclkdiv)
@@ -93,25 +83,17 @@ fn glb_set_system_clk_div(dp: &mut Peripherals, hclkdiv:u8, bclkdiv:u8){
     let currclock = SystemCoreClockGet(dp);
     SystemCoreClockSet(dp, currclock / (hclkdiv as u32 + 1) );
 
-    // // GLB_CLK_SET_DUMMY_WAIT;
     // // This was a set of 8 NOP instructions. at 32mhz, this is 1/4 of a us
     // // but since we just changed our clock source, we'll wait the equivalent of 1us worth
     // // of clocks at 160Mhz (this *should* be much longer than necessary)
     let mut delay = McycleDelay::new(SystemCoreClockGet(dp));
     delay.try_delay_us(1).unwrap();
 
-
-    // tmpVal=BL_RD_REG(GLB_BASE,GLB_CLK_CFG0);
-    // tmpVal=BL_SET_REG_BIT(tmpVal,GLB_REG_HCLK_EN);
-    // tmpVal=BL_SET_REG_BIT(tmpVal,GLB_REG_BCLK_EN);
-    // BL_WR_REG(GLB_BASE,GLB_CLK_CFG0,tmpVal);
-    // GLB_CLK_SET_DUMMY_WAIT;
     dp.GLB.clk_cfg0.modify(|_,w| unsafe { w
         .reg_hclk_en().set_bit()
         .reg_bclk_en().set_bit()
     });
     delay.try_delay_us(1).unwrap();
-    // return SUCCESS;
 }
 
 

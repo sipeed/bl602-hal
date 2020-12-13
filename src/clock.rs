@@ -3,7 +3,7 @@
 // 时钟控制器
 use crate::pac;
 use crate::gpio::ClkCfg;
-use core::num::NonZeroU32;
+use core::{num::NonZeroU32, unimplemented};
 use embedded_time::rate::Hertz;
 use crate::pac::Peripherals;
 use embedded_hal::blocking::delay::{DelayUs, DelayMs};
@@ -61,10 +61,140 @@ enum GLB_PLL_XTAL_Type {
     RC32M       = 6,     // XTAL is RC32M
 }
 
+
+fn pds_select_xtal_as_pll_ref(dp: &mut Peripherals){
+    dp.PDS.clkpll_top_ctrl.modify(|_r,w| unsafe {w
+        .clkpll_refclk_sel().set_bit()
+        .clkpll_xtal_rc32m_sel().clear_bit()
+    });
+}
+
+fn pds_power_off_pll(dp: &mut Peripherals){
+    /* pu_clkpll_sfreg=0 */
+    /* pu_clkpll=0 */
+    dp.PDS.pu_rst_clkpll.modify(|_r, w| unsafe {w
+        .pu_clkpll_sfreg().clear_bit()
+        .pu_clkpll().clear_bit()
+    });
+
+    /* clkpll_pu_cp=0 */
+    /* clkpll_pu_pfd=0 */
+    /* clkpll_pu_fbdv=0 */
+    /* clkpll_pu_postdiv=0 */
+    dp.PDS.pu_rst_clkpll.modify(|_r, w| unsafe {w
+        .clkpll_pu_cp().clear_bit()
+        .clkpll_pu_pfd().clear_bit()
+        .clkpll_pu_fbdv().clear_bit()
+        .clkpll_pu_postdiv().clear_bit()
+    });
+}
+
 /// Minimal implementation of power-on pll. Currently hard-coded to 40M xtal
 fn pds_power_on_pll(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type) {
     let mut delay = McycleDelay::new(dp.HBN.hbn_rsv2.read().bits());
+    /**************************/
+    /* select PLL XTAL source */
+    /**************************/
+    match xtal {
+        // TODO: There's a pretty big chunk of translation to do to support RC32 as the PLL source.
+        GLB_PLL_XTAL_Type::RC32M | GLB_PLL_XTAL_Type::NONE => {
+            unimplemented!();
+            //pds_trim_rc32m(dp);
+            //pds_select_rc32m_as_pll_ref(dp)
+        },
+        _ => pds_select_xtal_as_pll_ref(dp)
+    }
 
+    /*******************************************/
+    /* PLL power down first, not indispensable */
+    /*******************************************/
+    /* power off PLL first, this step is not indispensable */
+    pds_power_off_pll(dp);
+
+    /********************/
+    /* PLL param config */
+    /********************/
+
+    // /* clkpll_icp_1u */
+    // /* clkpll_icp_5u */
+    // /* clkpll_int_frac_sw */
+
+    // The C code uses the same representation for both GLB_PLL_XTAL and PDS_PLL_XTAL - reusing that type
+    match xtal {
+        GLB_PLL_XTAL_Type::XTAL_26M => {
+            dp.PDS.clkpll_cp.modify(|_r, w| unsafe {w
+                .clkpll_icp_1u().bits(1)
+                .clkpll_icp_5u().bits(0)
+                .clkpll_int_frac_sw().set_bit()
+            });
+        },
+        _ => {
+            dp.PDS.clkpll_cp.modify(|_r, w| unsafe {w
+                .clkpll_icp_1u().bits(0)
+                .clkpll_icp_5u().bits(2)
+                .clkpll_int_frac_sw().clear_bit()
+            });
+        }
+    }
+
+    // /* clkpll_c3 */
+    // /* clkpll_cz */
+    // /* clkpll_rz */
+    // /* clkpll_r4 */
+    // /* clkpll_r4_short */
+    match xtal {
+        GLB_PLL_XTAL_Type::XTAL_26M => {
+            dp.PDS.clkpll_rz.modify(|_r, w| unsafe {w
+                .clkpll_c3().bits(2)
+                .clkpll_cz().bits(2)
+                .clkpll_rz().bits(5)
+                .clkpll_r4_short().clear_bit()
+            });
+        },
+        _ => {
+            dp.PDS.clkpll_rz.modify(|_r, w| unsafe {w
+                .clkpll_c3().bits(3)
+                .clkpll_cz().bits(1)
+                .clkpll_rz().bits(1)
+                .clkpll_r4_short().set_bit()
+            });
+        }
+    }
+    // /* clkpll_refdiv_ratio */
+    // /* clkpll_postdiv */
+    dp.PDS.clkpll_top_ctrl.modify(|_r, w| unsafe {w
+        .clkpll_postdiv().bits(0x14)
+        .clkpll_refdiv_ratio().bits(2)
+    });
+
+    // /* clkpll_sdmin */
+    dp.PDS.clkpll_sdm.modify(|_r, w| unsafe {w
+        .clkpll_sdmin().bits(
+            match xtal {
+                GLB_PLL_XTAL_Type::NONE =>  0x3C_0000,
+                GLB_PLL_XTAL_Type::XTAL_24M =>  0x50_0000,
+                GLB_PLL_XTAL_Type::XTAL_32M =>  0x3C_0000,
+                GLB_PLL_XTAL_Type::XTAL_38P4M =>  0x32_0000,
+                GLB_PLL_XTAL_Type::XTAL_40M =>  0x30_0000,
+                GLB_PLL_XTAL_Type::XTAL_26M =>  0x49_D39D,
+                GLB_PLL_XTAL_Type::RC32M =>  0x3C_0000,
+                _ =>  0x3C_0000,
+            }
+        )
+    });
+
+    // /* clkpll_sel_fb_clk */
+    // /* clkpll_sel_sample_clk can be 0/1, default is 1 */
+    dp.PDS.clkpll_fbdv.modify(|_r, w| unsafe {w
+        .clkpll_sel_fb_clk().bits(1)
+        .clkpll_sel_sample_clk().bits(1)
+    });
+
+    /*************************/
+    /* PLL power up sequence */
+    /*************************/
+
+    /* pu_clkpll_sfreg=1 */
     dp.PDS.pu_rst_clkpll.modify(|_r, w| unsafe {w
         .pu_clkpll_sfreg().set_bit()
     });

@@ -266,40 +266,28 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type) {
     //DelayUs(5);
     delay.try_delay_us(5).unwrap();
 
-    // /* clkpll_sdm_reset=1 */
-    // tmpVal=BL_RD_REG(PDS_BASE,PDS_PU_RST_CLKPLL);
-    // tmpVal=BL_SET_REG_BIT(tmpVal,PDS_CLKPLL_SDM_RESET);
-    // BL_WR_REG(PDS_BASE,PDS_PU_RST_CLKPLL,tmpVal);
+    /* clkpll_sdm_reset=1 */
     dp.PDS.pu_rst_clkpll.modify(|_r, w| unsafe {w
         .clkpll_sdm_reset().set_bit()
     });
     // BL602_Delay_US(1);
     delay.try_delay_us(1).unwrap();
 
-    // /* clkpll_reset_fbdv=1 */
-    // tmpVal=BL_RD_REG(PDS_BASE,PDS_PU_RST_CLKPLL);
-    // tmpVal=BL_SET_REG_BIT(tmpVal,PDS_CLKPLL_RESET_FBDV);
-    // BL_WR_REG(PDS_BASE,PDS_PU_RST_CLKPLL,tmpVal);
+    /* clkpll_reset_fbdv=1 */
     dp.PDS.pu_rst_clkpll.modify(|_r, w| unsafe {w
         .clkpll_reset_fbdv().set_bit()
     });
     // BL602_Delay_US(2);
     delay.try_delay_us(2).unwrap();
 
-    // /* clkpll_reset_fbdv=0 */
-    // tmpVal=BL_RD_REG(PDS_BASE,PDS_PU_RST_CLKPLL);
-    // tmpVal=BL_CLR_REG_BIT(tmpVal,PDS_CLKPLL_RESET_FBDV);
-    // BL_WR_REG(PDS_BASE,PDS_PU_RST_CLKPLL,tmpVal);
+    /* clkpll_reset_fbdv=0 */
     dp.PDS.pu_rst_clkpll.modify(|_r, w| unsafe {w
         .clkpll_reset_fbdv().clear_bit()
     });
     // BL602_Delay_US(1);
     delay.try_delay_us(1).unwrap();
 
-    // /* clkpll_sdm_reset=0 */
-    // tmpVal=BL_RD_REG(PDS_BASE,PDS_PU_RST_CLKPLL);
-    // tmpVal=BL_CLR_REG_BIT(tmpVal,PDS_CLKPLL_SDM_RESET);
-    // BL_WR_REG(PDS_BASE,PDS_PU_RST_CLKPLL,tmpVal);
+    /* clkpll_sdm_reset=0 */
     dp.PDS.pu_rst_clkpll.modify(|_r, w| unsafe {w
         .clkpll_sdm_reset().clear_bit()
     });
@@ -337,17 +325,12 @@ fn hbn_set_root_clk_sel(dp: &mut Peripherals, sel: HBN_ROOT_CLK_Type){
 /// TODO: finish clock init - some parts are hard-coded for 40Mhz XTAL + 160Mhz target clock
 pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type, clk: sys_clk) {
     /* reg_bclk_en = reg_hclk_en = reg_fclk_en = 1, cannot be zero */
-    // tmpVal = BL_SET_REG_BIT(tmpVal,GLB_REG_BCLK_EN);
-    // tmpVal = BL_SET_REG_BIT(tmpVal,GLB_REG_HCLK_EN);
-    // tmpVal = BL_SET_REG_BIT(tmpVal,GLB_REG_FCLK_EN);
-    // BL_WR_REG(GLB_BASE,GLB_CLK_CFG0,tmpVal);
     dp.GLB.clk_cfg0.modify(|_, w| unsafe { w
         .reg_bclk_en().set_bit()
         .reg_hclk_en().set_bit()
         .reg_fclk_en().set_bit()
     });
 
-    //HBN_Set_ROOT_CLK_Sel(HBN_ROOT_CLK_RC32M)
      /* Before config XTAL and PLL ,make sure root clk is from RC32M */
     hbn_set_root_clk_sel(dp, HBN_ROOT_CLK_Type::RC32M);
 
@@ -438,14 +421,14 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type, clk: sy
         _ => {}
     };
 
-    // // GLB_CLK_SET_DUMMY_WAIT;
-    // // This was a set of 8 NOP instructions. at 32mhz, this is 1/4 of a us
-    // // but since we just changed our clock source, we'll wait the equivalent of 1us worth
-    // // of clocks at 160Mhz (this *should* be much longer than necessary)
+    // GLB_CLK_SET_DUMMY_WAIT;
+    // This was a set of 8 NOP instructions. at 32mhz, this is 1/4 of a us
+    // but since we just changed our clock source, we'll wait the equivalent of 1us worth
+    // of clocks at 160Mhz (this *should* be much longer than necessary)
     let mut delay = McycleDelay::new(SystemCoreClockGet(dp));
     delay.try_delay_us(1).unwrap();
 
-    // /* select PKA clock from 120M since we power up PLL */
+    /* select PKA clock from 120M since we power up PLL */
     // NOTE: This isn't documented in the datasheet!
     // GLB_Set_PKA_CLK_Sel(GLB_PKA_CLK_PLL120M);
     dp.GLB.swrst_cfg2.write(|w| unsafe { w

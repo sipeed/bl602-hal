@@ -381,8 +381,17 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type, clk: sy
 
     /* select pll output clock before select root clock */
     // sets to clkFreq-GLB_SYS_CLK_PLL48M, where PLL160M is 2 more than PLL48M
+    // Doing this with a match seems more Rusty
     dp.GLB.clk_cfg0.modify(|r, w| unsafe {w
-        .reg_pll_sel().bits(2)
+        .reg_pll_sel().bits(
+            match clk {
+                sys_clk::PLL48M => 0,
+                sys_clk::PLL120M => 1,
+                sys_clk::PLL160M => 2,
+                sys_clk::PLL192M => 3,
+                _ => {panic!()}
+            }
+        )
     });
 
     /* select root clock */

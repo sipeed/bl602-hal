@@ -313,9 +313,9 @@ fn hbn_set_root_clk_sel(dp: &mut Peripherals, sel: HBN_ROOT_CLK_Type){
     dp.HBN.hbn_glb.modify(|r,w| unsafe { w
         .hbn_root_clk_sel().bits(
             match sel {
-                HBN_ROOT_CLK_RC32M=>  0b00u8,
-                HBN_ROOT_CLK_XTAL => 0b01u8,
-                HBN_ROOT_CLK_PLL => r.hbn_root_clk_sel().bits() as u8 | 0b10u8
+                HBN_ROOT_CLK_Type::RC32M => 0b00u8,
+                HBN_ROOT_CLK_Type::XTAL => 0b01u8,
+                HBN_ROOT_CLK_Type::PLL => r.hbn_root_clk_sel().bits() as u8 | 0b10u8
             }
         )
     });

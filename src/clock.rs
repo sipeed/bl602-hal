@@ -72,7 +72,8 @@ pub fn SystemCoreClockGet(dp: &mut Peripherals) -> u32 {
 }
 
 fn glb_set_system_clk_div(dp: &mut Peripherals, hclkdiv:u8, bclkdiv:u8){
-    // /* recommended: fclk<=160MHz, bclk<=80MHz */
+    // recommended: fclk<=160MHz, bclk<=80MHz
+    // fclk is determined by hclk_div (strange), which then feeds into bclk, hclk and uartclk
     let glb_reg_bclk_dis = 0x40000FFC as * mut u32;
     dp.GLB.clk_cfg0.modify(|_,w| unsafe { w
         .reg_hclk_div().bits(hclkdiv)
@@ -83,9 +84,10 @@ fn glb_set_system_clk_div(dp: &mut Peripherals, hclkdiv:u8, bclkdiv:u8){
     let currclock = SystemCoreClockGet(dp);
     SystemCoreClockSet(dp, currclock / (hclkdiv as u32 + 1) );
 
-    // // This was a set of 8 NOP instructions. at 32mhz, this is 1/4 of a us
-    // // but since we just changed our clock source, we'll wait the equivalent of 1us worth
-    // // of clocks at 160Mhz (this *should* be much longer than necessary)
+    // The original delays in this function were 8 NOP instructions. at 32mhz, this is 1/4 of a us
+    // but since we just changed our clock source, we'll wait the equivalent of 1us worth
+    // of clocks at 160Mhz (this *should* be much longer than necessary)
+    // Might be worth switching to asm once that stabilises - seems to be okay for now
     let mut delay = McycleDelay::new(SystemCoreClockGet(dp));
     delay.try_delay_us(1).unwrap();
 

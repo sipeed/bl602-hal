@@ -70,7 +70,7 @@ pub enum sys_clk {
     PLL192M = 5, // use PLL output 192M as system clock
 }
 
-fn SystemCoreClockSet(dp: &mut Peripherals, value:u32){
+pub fn SystemCoreClockSet(dp: &mut Peripherals, value:u32){
     dp.HBN.hbn_rsv2.write(|w| unsafe { w
         .bits(value)
     })
@@ -394,41 +394,28 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type, clk: sy
         )
     });
 
-    /* select root clock */
-    match clk {
-        sys_clk::RC32M => {},
-        sys_clk::XTAL => {
-            hbn_set_root_clk_sel(dp, HBN_ROOT_CLK_Type::XTAL);
-            unimplemented!()
-            //Update_SystemCoreClockWith_XTAL(xtalType);
-        },
-        sys_clk::PLL48M => {
-            hbn_set_root_clk_sel(dp, HBN_ROOT_CLK_Type::PLL);
-            SystemCoreClockSet(dp, 48_000_000);
-        },
-        sys_clk::PLL120M => {
-            glb_set_system_clk_div(dp,0,1);
-            hbn_set_root_clk_sel(dp, HBN_ROOT_CLK_Type::PLL);
-            SystemCoreClockSet(dp, 120_000_000);
-        },
-        sys_clk::PLL160M => {
-            dp.L1C.l1c_config.modify(|r, w| unsafe {w
-                .irom_2t_access().set_bit()
-            });
-            glb_set_system_clk_div(dp,0,1);
-            hbn_set_root_clk_sel(dp, HBN_ROOT_CLK_Type::PLL);
-            SystemCoreClockSet(dp, 160_000_000);
-        },
-        sys_clk::PLL192M => {
-            dp.L1C.l1c_config.modify(|r, w| unsafe {w
-                .irom_2t_access().set_bit()
-            });
-            glb_set_system_clk_div(dp,0,1);
-            hbn_set_root_clk_sel(dp, HBN_ROOT_CLK_Type::PLL);
-            SystemCoreClockSet(dp, 192_000_000);
-        },
-        _ => {}
+    let target_core_clk = match clk{
+        sys_clk::RC32M => 0,
+        sys_clk::XTAL => 0,
+        sys_clk::PLL48M => 48_000_000,
+        sys_clk::PLL120M => 120_000_000,
+        sys_clk::PLL160M => 160_000_000,
+        sys_clk::PLL192M => 192_000_000,
     };
+
+    if target_core_clk > 48_000_000 {
+        glb_set_system_clk_div(dp,0, 1);
+    }
+
+    if target_core_clk > 120_000_000 {
+        dp.L1C.l1c_config.modify(|r, w| unsafe {w
+            .irom_2t_access().set_bit()
+        });
+    }
+    if target_core_clk > 0 {
+        hbn_set_root_clk_sel(dp, HBN_ROOT_CLK_Type::PLL);
+        SystemCoreClockSet(dp, target_core_clk);
+    }
 
     // GLB_CLK_SET_DUMMY_WAIT;
     // This was a set of 8 NOP instructions. at 32mhz, this is 1/4 of a us

@@ -114,7 +114,8 @@ fn glb_set_system_clk_div(dp: &mut Peripherals, hclkdiv:u8, bclkdiv:u8){
 
 
 fn pds_select_xtal_as_pll_ref(dp: &mut Peripherals){
-    dp.PDS.clkpll_top_ctrl.modify(|_r,w| {w
+    let pds = unsafe { &*pac::PDS::ptr() };
+    pds.clkpll_top_ctrl.modify(|_r,w| {w
         .clkpll_refclk_sel().set_bit()
         .clkpll_xtal_rc32m_sel().clear_bit()
     });
@@ -123,7 +124,8 @@ fn pds_select_xtal_as_pll_ref(dp: &mut Peripherals){
 fn pds_power_off_pll(dp: &mut Peripherals){
     /* pu_clkpll_sfreg=0 */
     /* pu_clkpll=0 */
-    dp.PDS.pu_rst_clkpll.modify(|_r, w| {w
+    let pds = unsafe { &*pac::PDS::ptr() };
+    pds.pu_rst_clkpll.modify(|_r, w| {w
         .pu_clkpll_sfreg().clear_bit()
         .pu_clkpll().clear_bit()
     });
@@ -132,7 +134,7 @@ fn pds_power_off_pll(dp: &mut Peripherals){
     /* clkpll_pu_pfd=0 */
     /* clkpll_pu_fbdv=0 */
     /* clkpll_pu_postdiv=0 */
-    dp.PDS.pu_rst_clkpll.modify(|_r, w| {w
+    pds.pu_rst_clkpll.modify(|_r, w| {w
         .clkpll_pu_cp().clear_bit()
         .clkpll_pu_pfd().clear_bit()
         .clkpll_pu_fbdv().clear_bit()
@@ -142,6 +144,7 @@ fn pds_power_off_pll(dp: &mut Peripherals){
 
 /// Minimal implementation of power-on pll. Currently only allows external xtal
 fn pds_power_on_pll(dp: &mut Peripherals, xtal: GlbPllXtalType) {
+    let pds = unsafe { &*pac::PDS::ptr() };
     let mut delay = McycleDelay::new(system_core_clock_get());
     /**************************/
     /* select PLL XTAL source */
@@ -173,14 +176,14 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GlbPllXtalType) {
     // The C code uses the same representation for both GLB_PLL_XTAL and PDS_PLL_XTAL - reusing that type
     match xtal {
         GlbPllXtalType::Xtal26m => {
-            dp.PDS.clkpll_cp.modify(|_r, w| unsafe {w
+            pds.clkpll_cp.modify(|_r, w| unsafe {w
                 .clkpll_icp_1u().bits(1)
                 .clkpll_icp_5u().bits(0)
                 .clkpll_int_frac_sw().set_bit()
             });
         },
         _ => {
-            dp.PDS.clkpll_cp.modify(|_r, w| unsafe {w
+            pds.clkpll_cp.modify(|_r, w| unsafe {w
                 .clkpll_icp_1u().bits(0)
                 .clkpll_icp_5u().bits(2)
                 .clkpll_int_frac_sw().clear_bit()
@@ -195,7 +198,7 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GlbPllXtalType) {
     // /* clkpll_r4_short */
     match xtal {
         GlbPllXtalType::Xtal26m => {
-            dp.PDS.clkpll_rz.modify(|_r, w| unsafe {w
+            pds.clkpll_rz.modify(|_r, w| unsafe {w
                 .clkpll_c3().bits(2)
                 .clkpll_cz().bits(2)
                 .clkpll_rz().bits(5)
@@ -203,7 +206,7 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GlbPllXtalType) {
             });
         },
         _ => {
-            dp.PDS.clkpll_rz.modify(|_r, w| unsafe {w
+            pds.clkpll_rz.modify(|_r, w| unsafe {w
                 .clkpll_c3().bits(3)
                 .clkpll_cz().bits(1)
                 .clkpll_rz().bits(1)
@@ -213,13 +216,13 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GlbPllXtalType) {
     }
     // /* clkpll_refdiv_ratio */
     // /* clkpll_postdiv */
-    dp.PDS.clkpll_top_ctrl.modify(|_r, w| unsafe {w
+    pds.clkpll_top_ctrl.modify(|_r, w| unsafe {w
         .clkpll_postdiv().bits(0x14)
         .clkpll_refdiv_ratio().bits(2)
     });
 
     // /* clkpll_sdmin */
-    dp.PDS.clkpll_sdm.modify(|_r, w| unsafe {w
+    pds.clkpll_sdm.modify(|_r, w| unsafe {w
         .clkpll_sdmin().bits(
             match xtal {
                 GlbPllXtalType::None =>  0x3C_0000,
@@ -235,7 +238,7 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GlbPllXtalType) {
 
     // /* clkpll_sel_fb_clk */
     // /* clkpll_sel_sample_clk can be 0/1, default is 1 */
-    dp.PDS.clkpll_fbdv.modify(|_r, w| unsafe {w
+    pds.clkpll_fbdv.modify(|_r, w| unsafe {w
         .clkpll_sel_fb_clk().bits(1)
         .clkpll_sel_sample_clk().bits(1)
     });
@@ -245,7 +248,7 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GlbPllXtalType) {
     /*************************/
 
     /* pu_clkpll_sfreg=1 */
-    dp.PDS.pu_rst_clkpll.modify(|_r, w| {w
+    pds.pu_rst_clkpll.modify(|_r, w| {w
         .pu_clkpll_sfreg().set_bit()
     });
 
@@ -253,7 +256,7 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GlbPllXtalType) {
     delay.try_delay_us(5).unwrap();
 
     /* pu_clkpll=1 */
-    dp.PDS.pu_rst_clkpll.modify(|_r, w| {w
+    pds.pu_rst_clkpll.modify(|_r, w| {w
         .pu_clkpll().set_bit()
     });
 
@@ -261,7 +264,7 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GlbPllXtalType) {
     /* clkpll_pu_pfd=1 */
     /* clkpll_pu_fbdv=1 */
     /* clkpll_pu_postdiv=1 */
-    dp.PDS.pu_rst_clkpll.modify(|_r, w| {w
+    pds.pu_rst_clkpll.modify(|_r, w| {w
         .clkpll_pu_cp().set_bit()
         .clkpll_pu_pfd().set_bit()
         .clkpll_pu_fbdv().set_bit()
@@ -271,28 +274,28 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GlbPllXtalType) {
     delay.try_delay_us(5).unwrap();
 
     /* clkpll_sdm_reset=1 */
-    dp.PDS.pu_rst_clkpll.modify(|_r, w| {w
+    pds.pu_rst_clkpll.modify(|_r, w| {w
         .clkpll_sdm_reset().set_bit()
     });
     // BL602_Delay_US(1);
     delay.try_delay_us(1).unwrap();
 
     /* clkpll_reset_fbdv=1 */
-    dp.PDS.pu_rst_clkpll.modify(|_r, w| {w
+    pds.pu_rst_clkpll.modify(|_r, w| {w
         .clkpll_reset_fbdv().set_bit()
     });
     // BL602_Delay_US(2);
     delay.try_delay_us(2).unwrap();
 
     /* clkpll_reset_fbdv=0 */
-    dp.PDS.pu_rst_clkpll.modify(|_r, w| {w
+    pds.pu_rst_clkpll.modify(|_r, w| {w
         .clkpll_reset_fbdv().clear_bit()
     });
     // BL602_Delay_US(1);
     delay.try_delay_us(1).unwrap();
 
     /* clkpll_sdm_reset=0 */
-    dp.PDS.pu_rst_clkpll.modify(|_r, w| {w
+    pds.pu_rst_clkpll.modify(|_r, w| {w
         .clkpll_sdm_reset().clear_bit()
     });
 }
@@ -323,6 +326,13 @@ fn hbn_set_root_clk_sel(dp: &mut Peripherals, sel: HbnRootClkType){
                 HbnRootClkType::PLL => r.hbn_root_clk_sel().bits() as u8 | 0b10u8
             }
         )
+    });
+}
+
+fn pds_enable_pll_all_clks(){
+    let pds = unsafe { &*pac::PDS::ptr() };
+    pds.clkpll_output_en.modify(|r, w| unsafe {w
+        .bits(r.bits() | 0x1FF)
     });
 }
 
@@ -374,10 +384,7 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysCl
     let mut delay = McycleDelay::new(system_core_clock_get());
     delay.try_delay_us(55).unwrap();
 
-    // PDS_Enable_PLL_All_Clks()
-    dp.PDS.clkpll_output_en.modify(|r, w| unsafe {w
-        .bits(r.bits() | 0x1FF)
-    });
+    pds_enable_pll_all_clks();
     
     /* reg_pll_en = 1, cannot be zero */
     dp.GLB.clk_cfg0.modify(|_, w| {w

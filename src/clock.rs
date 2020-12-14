@@ -300,11 +300,11 @@ fn aon_power_on_xtal(dp: &mut Peripherals) {
     });
 
     let mut delaysrc = McycleDelay::new(system_core_clock_get(dp));
-    let mut timeOut:u32 = 0;
+    let mut timeout:u32 = 0;
     delaysrc.try_delay_us(10).unwrap();
-    while dp.AON.tsen.read().xtal_rdy().bit_is_clear() && timeOut < 120{
+    while dp.AON.tsen.read().xtal_rdy().bit_is_clear() && timeout < 120{
         delaysrc.try_delay_us(10).unwrap();
-        timeOut+=1;
+        timeout+=1;
     }
     // TODO: error out on timeout
 }

@@ -300,8 +300,9 @@ fn pds_power_on_pll(xtal: GlbPllXtalType) {
     });
 }
 
-fn aon_power_on_xtal(dp: &mut Peripherals) {
-    dp.AON.rf_top_aon.modify(|_, w| { w
+fn aon_power_on_xtal() {
+    let aon = unsafe { &*pac::AON::ptr() };
+    aon.rf_top_aon.modify(|_, w| { w
         .pu_xtal_aon().set_bit()
         .pu_xtal_buf_aon().set_bit()
     });
@@ -309,7 +310,7 @@ fn aon_power_on_xtal(dp: &mut Peripherals) {
     let mut delaysrc = McycleDelay::new(system_core_clock_get());
     let mut timeout:u32 = 0;
     delaysrc.try_delay_us(10).unwrap();
-    while dp.AON.tsen.read().xtal_rdy().bit_is_clear() && timeout < 120{
+    while aon.tsen.read().xtal_rdy().bit_is_clear() && timeout < 120{
         delaysrc.try_delay_us(10).unwrap();
         timeout+=1;
     }
@@ -374,7 +375,7 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysCl
         GLB_PLL_XTAL_RC32M => {}
         _ => {
             /* AON_Power_On_XTAL(); */
-            aon_power_on_xtal(dp);
+            aon_power_on_xtal();
         }
     }
 

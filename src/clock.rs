@@ -40,7 +40,7 @@ pub struct Strict {
 /// HBN root clock type definition
 #[allow(dead_code)]
 #[repr(u8)]
-enum HBN_ROOT_CLK_Type {
+enum HbnRootClkType {
     RC32M = 0,           // use RC32M as root clock
     XTAL  = 1,           // use XTAL as root clock
     PLL   = 2,           // use PLL as root clock
@@ -51,17 +51,17 @@ enum HBN_ROOT_CLK_Type {
  */
  #[allow(dead_code)]
  #[repr(u8)]
-pub enum GLB_PLL_XTAL_Type {
+pub enum GlbPllXtalType {
     NONE        = 0,     // XTAL is none
-    XTAL_24M    = 1,     // XTAL is 24M
-    XTAL_32M    = 2,     // XTAL is 32M
-    XTAL_38P4M  = 3,     // XTAL is 38.4M
-    XTAL_40M    = 4,     // XTAL is 40M
-    XTAL_26M    = 5,     // XTAL is 26M
+    Xtal24m    = 1,     // XTAL is 24M
+    Xtal32m    = 2,     // XTAL is 32M
+    Xtal38p4m  = 3,     // XTAL is 38.4M
+    Xtal40m    = 4,     // XTAL is 40M
+    Xtal26m    = 5,     // XTAL is 26M
     RC32M       = 6,     // XTAL is RC32M
 }
 #[allow(dead_code)]
-pub enum sys_clk {
+pub enum SysClk {
     RC32M   = 0, // use RC32M as system clock frequency
     XTAL    = 1, // use XTAL as system clock
     PLL48M  = 2, // use PLL output 48M as system clock
@@ -70,13 +70,13 @@ pub enum sys_clk {
     PLL192M = 5, // use PLL output 192M as system clock
 }
 
-pub fn SystemCoreClockSet(dp: &mut Peripherals, value:u32){
+pub fn system_core_clock_set(dp: &mut Peripherals, value:u32){
     dp.HBN.hbn_rsv2.write(|w| unsafe { w
         .bits(value)
     })
 }
 
-pub fn SystemCoreClockGet(dp: &mut Peripherals) -> u32 {
+pub fn system_core_clock_get(dp: &mut Peripherals) -> u32 {
     dp.HBN.hbn_rsv2.read().bits()
 }
 
@@ -90,14 +90,14 @@ fn glb_set_system_clk_div(dp: &mut Peripherals, hclkdiv:u8, bclkdiv:u8){
     });
     unsafe { glb_reg_bclk_dis.write_volatile(1) };
     unsafe { glb_reg_bclk_dis.write_volatile(0) };
-    let currclock = SystemCoreClockGet(dp);
-    SystemCoreClockSet(dp, currclock / (hclkdiv as u32 + 1) );
+    let currclock = system_core_clock_get(dp);
+    system_core_clock_set(dp, currclock / (hclkdiv as u32 + 1) );
 
     // The original delays in this function were 8 NOP instructions. at 32mhz, this is 1/4 of a us
     // but since we just changed our clock source, we'll wait the equivalent of 1us worth
     // of clocks at 160Mhz (this *should* be much longer than necessary)
     // Might be worth switching to asm once that stabilises - seems to be okay for now
-    let mut delay = McycleDelay::new(SystemCoreClockGet(dp));
+    let mut delay = McycleDelay::new(system_core_clock_get(dp));
     delay.try_delay_us(1).unwrap();
 
     dp.GLB.clk_cfg0.modify(|_,w| unsafe { w
@@ -136,14 +136,14 @@ fn pds_power_off_pll(dp: &mut Peripherals){
 }
 
 /// Minimal implementation of power-on pll. Currently only allows external xtal
-fn pds_power_on_pll(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type) {
-    let mut delay = McycleDelay::new(SystemCoreClockGet(dp));
+fn pds_power_on_pll(dp: &mut Peripherals, xtal: GlbPllXtalType) {
+    let mut delay = McycleDelay::new(system_core_clock_get(dp));
     /**************************/
     /* select PLL XTAL source */
     /**************************/
     match xtal {
         // TODO: There's a pretty big chunk of translation to do to support RC32 as the PLL source.
-        GLB_PLL_XTAL_Type::RC32M | GLB_PLL_XTAL_Type::NONE => {
+        GlbPllXtalType::RC32M | GlbPllXtalType::NONE => {
             unimplemented!();
             //pds_trim_rc32m(dp);
             //pds_select_rc32m_as_pll_ref(dp)
@@ -167,7 +167,7 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type) {
 
     // The C code uses the same representation for both GLB_PLL_XTAL and PDS_PLL_XTAL - reusing that type
     match xtal {
-        GLB_PLL_XTAL_Type::XTAL_26M => {
+        GlbPllXtalType::Xtal26m => {
             dp.PDS.clkpll_cp.modify(|_r, w| unsafe {w
                 .clkpll_icp_1u().bits(1)
                 .clkpll_icp_5u().bits(0)
@@ -189,7 +189,7 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type) {
     // /* clkpll_r4 */
     // /* clkpll_r4_short */
     match xtal {
-        GLB_PLL_XTAL_Type::XTAL_26M => {
+        GlbPllXtalType::Xtal26m => {
             dp.PDS.clkpll_rz.modify(|_r, w| unsafe {w
                 .clkpll_c3().bits(2)
                 .clkpll_cz().bits(2)
@@ -217,13 +217,13 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type) {
     dp.PDS.clkpll_sdm.modify(|_r, w| unsafe {w
         .clkpll_sdmin().bits(
             match xtal {
-                GLB_PLL_XTAL_Type::NONE =>  0x3C_0000,
-                GLB_PLL_XTAL_Type::XTAL_24M =>  0x50_0000,
-                GLB_PLL_XTAL_Type::XTAL_32M =>  0x3C_0000,
-                GLB_PLL_XTAL_Type::XTAL_38P4M =>  0x32_0000,
-                GLB_PLL_XTAL_Type::XTAL_40M =>  0x30_0000,
-                GLB_PLL_XTAL_Type::XTAL_26M =>  0x49_D39D,
-                GLB_PLL_XTAL_Type::RC32M =>  0x3C_0000,
+                GlbPllXtalType::NONE =>  0x3C_0000,
+                GlbPllXtalType::Xtal24m =>  0x50_0000,
+                GlbPllXtalType::Xtal32m =>  0x3C_0000,
+                GlbPllXtalType::Xtal38p4m =>  0x32_0000,
+                GlbPllXtalType::Xtal40m =>  0x30_0000,
+                GlbPllXtalType::Xtal26m =>  0x49_D39D,
+                GlbPllXtalType::RC32M =>  0x3C_0000,
                 _ =>  0x3C_0000,
             }
         )
@@ -299,7 +299,7 @@ fn aon_power_on_xtal(dp: &mut Peripherals) {
         .pu_xtal_buf_aon().set_bit()
     });
 
-    let mut delaysrc = McycleDelay::new(SystemCoreClockGet(dp));
+    let mut delaysrc = McycleDelay::new(system_core_clock_get(dp));
     let mut timeOut:u32 = 0;
     delaysrc.try_delay_us(10).unwrap();
     while dp.AON.tsen.read().xtal_rdy().bit_is_clear() && timeOut < 120{
@@ -309,13 +309,13 @@ fn aon_power_on_xtal(dp: &mut Peripherals) {
     // TODO: error out on timeout
 }
 
-fn hbn_set_root_clk_sel(dp: &mut Peripherals, sel: HBN_ROOT_CLK_Type){
+fn hbn_set_root_clk_sel(dp: &mut Peripherals, sel: HbnRootClkType){
     dp.HBN.hbn_glb.modify(|r,w| unsafe { w
         .hbn_root_clk_sel().bits(
             match sel {
-                HBN_ROOT_CLK_Type::RC32M => 0b00u8,
-                HBN_ROOT_CLK_Type::XTAL => 0b01u8,
-                HBN_ROOT_CLK_Type::PLL => r.hbn_root_clk_sel().bits() as u8 | 0b10u8
+                HbnRootClkType::RC32M => 0b00u8,
+                HbnRootClkType::XTAL => 0b01u8,
+                HbnRootClkType::PLL => r.hbn_root_clk_sel().bits() as u8 | 0b10u8
             }
         )
     });
@@ -323,7 +323,7 @@ fn hbn_set_root_clk_sel(dp: &mut Peripherals, sel: HBN_ROOT_CLK_Type){
 
 /// Setup XTAL and PLL for system clock
 /// TODO: finish clock init - some parts are hard-coded for 40Mhz XTAL + 160Mhz target clock
-pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type, clk: sys_clk) {
+pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysClk) {
     /* reg_bclk_en = reg_hclk_en = reg_fclk_en = 1, cannot be zero */
     dp.GLB.clk_cfg0.modify(|_, w| unsafe { w
         .reg_bclk_en().set_bit()
@@ -332,7 +332,7 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type, clk: sy
     });
 
      /* Before config XTAL and PLL ,make sure root clk is from RC32M */
-    hbn_set_root_clk_sel(dp, HBN_ROOT_CLK_Type::RC32M);
+    hbn_set_root_clk_sel(dp, HbnRootClkType::RC32M);
 
     dp.GLB.clk_cfg0.modify(|_,w| unsafe { w
         .reg_hclk_div().bits(0)
@@ -340,7 +340,7 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type, clk: sy
     });
 
     // Update sysclock
-    SystemCoreClockSet(dp, 32_000_000);
+    system_core_clock_set(dp, 32_000_000);
 
     /* Select PKA clock from hclk */
     dp.GLB.swrst_cfg2.modify(|_,w| unsafe { w
@@ -352,8 +352,8 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type, clk: sy
     // If we asked for PLL and RC32, do nothing
     // Else, we're using crystal so power that on
     match xtal {
-        GLB_PLL_XTAL_Type::NONE => match clk {
-            sys_clk::RC32M => return,
+        GlbPllXtalType::NONE => match clk {
+            SysClk::RC32M => return,
             _ => {}
         },
         GLB_PLL_XTAL_RC32M => {}
@@ -364,9 +364,9 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type, clk: sy
     }
 
     /* always power up PLL and enable all PLL clock output */
-    pds_power_on_pll(dp, GLB_PLL_XTAL_Type::XTAL_40M);
+    pds_power_on_pll(dp, GlbPllXtalType::Xtal40m);
 
-    let mut delay = McycleDelay::new(SystemCoreClockGet(dp));
+    let mut delay = McycleDelay::new(system_core_clock_get(dp));
     delay.try_delay_us(55).unwrap();
 
     // PDS_Enable_PLL_All_Clks()
@@ -385,22 +385,22 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type, clk: sy
     dp.GLB.clk_cfg0.modify(|r, w| unsafe {w
         .reg_pll_sel().bits(
             match clk {
-                sys_clk::PLL48M => 0,
-                sys_clk::PLL120M => 1,
-                sys_clk::PLL160M => 2,
-                sys_clk::PLL192M => 3,
+                SysClk::PLL48M => 0,
+                SysClk::PLL120M => 1,
+                SysClk::PLL160M => 2,
+                SysClk::PLL192M => 3,
                 _ => {panic!()}
             }
         )
     });
 
     let target_core_clk = match clk{
-        sys_clk::RC32M => 0,
-        sys_clk::XTAL => 0,
-        sys_clk::PLL48M => 48_000_000,
-        sys_clk::PLL120M => 120_000_000,
-        sys_clk::PLL160M => 160_000_000,
-        sys_clk::PLL192M => 192_000_000,
+        SysClk::RC32M => 0,
+        SysClk::XTAL => 0,
+        SysClk::PLL48M => 48_000_000,
+        SysClk::PLL120M => 120_000_000,
+        SysClk::PLL160M => 160_000_000,
+        SysClk::PLL192M => 192_000_000,
     };
 
     if target_core_clk > 48_000_000 {
@@ -413,15 +413,15 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GLB_PLL_XTAL_Type, clk: sy
         });
     }
     if target_core_clk > 0 {
-        hbn_set_root_clk_sel(dp, HBN_ROOT_CLK_Type::PLL);
-        SystemCoreClockSet(dp, target_core_clk);
+        hbn_set_root_clk_sel(dp, HbnRootClkType::PLL);
+        system_core_clock_set(dp, target_core_clk);
     }
 
     // GLB_CLK_SET_DUMMY_WAIT;
     // This was a set of 8 NOP instructions. at 32mhz, this is 1/4 of a us
     // but since we just changed our clock source, we'll wait the equivalent of 1us worth
     // of clocks at 160Mhz (this *should* be much longer than necessary)
-    let mut delay = McycleDelay::new(SystemCoreClockGet(dp));
+    let mut delay = McycleDelay::new(system_core_clock_get(dp));
     delay.try_delay_us(1).unwrap();
 
     /* select PKA clock from 120M since we power up PLL */

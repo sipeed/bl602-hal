@@ -52,22 +52,22 @@ enum HbnRootClkType {
  #[allow(dead_code)]
  #[repr(u8)]
 pub enum GlbPllXtalType {
-    NONE        = 0,     // XTAL is none
+    None        = 0,     // XTAL is none
     Xtal24m    = 1,     // XTAL is 24M
     Xtal32m    = 2,     // XTAL is 32M
     Xtal38p4m  = 3,     // XTAL is 38.4M
     Xtal40m    = 4,     // XTAL is 40M
     Xtal26m    = 5,     // XTAL is 26M
-    RC32M       = 6,     // XTAL is RC32M
+    Rc32m       = 6,     // XTAL is RC32M
 }
 #[allow(dead_code)]
 pub enum SysClk {
-    RC32M   = 0, // use RC32M as system clock frequency
-    XTAL    = 1, // use XTAL as system clock
-    PLL48M  = 2, // use PLL output 48M as system clock
-    PLL120M = 3, // use PLL output 120M as system clock
-    PLL160M = 4, // use PLL output 160M as system clock
-    PLL192M = 5, // use PLL output 192M as system clock
+    Rc32m   = 0, // use RC32M as system clock frequency
+    Xtal    = 1, // use XTAL as system clock
+    Pll48m  = 2, // use PLL output 48M as system clock
+    Pll120m = 3, // use PLL output 120M as system clock
+    Pll160m = 4, // use PLL output 160M as system clock
+    Pll192m = 5, // use PLL output 192M as system clock
 }
 
 pub fn system_core_clock_set(dp: &mut Peripherals, value:u32){
@@ -143,7 +143,7 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GlbPllXtalType) {
     /**************************/
     match xtal {
         // TODO: There's a pretty big chunk of translation to do to support RC32 as the PLL source.
-        GlbPllXtalType::RC32M | GlbPllXtalType::NONE => {
+        GlbPllXtalType::Rc32m | GlbPllXtalType::None => {
             unimplemented!();
             //pds_trim_rc32m(dp);
             //pds_select_rc32m_as_pll_ref(dp)
@@ -217,13 +217,13 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GlbPllXtalType) {
     dp.PDS.clkpll_sdm.modify(|_r, w| unsafe {w
         .clkpll_sdmin().bits(
             match xtal {
-                GlbPllXtalType::NONE =>  0x3C_0000,
+                GlbPllXtalType::None =>  0x3C_0000,
                 GlbPllXtalType::Xtal24m =>  0x50_0000,
                 GlbPllXtalType::Xtal32m =>  0x3C_0000,
                 GlbPllXtalType::Xtal38p4m =>  0x32_0000,
                 GlbPllXtalType::Xtal40m =>  0x30_0000,
                 GlbPllXtalType::Xtal26m =>  0x49_D39D,
-                GlbPllXtalType::RC32M =>  0x3C_0000,
+                GlbPllXtalType::Rc32m =>  0x3C_0000,
             }
         )
     });
@@ -351,8 +351,8 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysCl
     // If we asked for PLL and RC32, do nothing
     // Else, we're using crystal so power that on
     match xtal {
-        GlbPllXtalType::NONE => match clk {
-            SysClk::RC32M => return,
+        GlbPllXtalType::None => match clk {
+            SysClk::Rc32m => return,
             _ => {}
         },
         GLB_PLL_XTAL_RC32M => {}
@@ -384,22 +384,22 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysCl
     dp.GLB.clk_cfg0.modify(|_, w| unsafe {w
         .reg_pll_sel().bits(
             match clk {
-                SysClk::PLL48M => 0,
-                SysClk::PLL120M => 1,
-                SysClk::PLL160M => 2,
-                SysClk::PLL192M => 3,
+                SysClk::Pll48m => 0,
+                SysClk::Pll120m => 1,
+                SysClk::Pll160m => 2,
+                SysClk::Pll192m => 3,
                 _ => {panic!()}
             }
         )
     });
 
     let target_core_clk = match clk{
-        SysClk::RC32M => 0,
-        SysClk::XTAL => 0,
-        SysClk::PLL48M => 48_000_000,
-        SysClk::PLL120M => 120_000_000,
-        SysClk::PLL160M => 160_000_000,
-        SysClk::PLL192M => 192_000_000,
+        SysClk::Rc32m => 0,
+        SysClk::Xtal => 0,
+        SysClk::Pll48m => 48_000_000,
+        SysClk::Pll120m => 120_000_000,
+        SysClk::Pll160m => 160_000_000,
+        SysClk::Pll192m => 192_000_000,
     };
 
     if target_core_clk > 48_000_000 {
@@ -473,6 +473,7 @@ impl Strict {
             .uart_clk_div().bits(uart_clk_div)
             .uart_clk_en().set_bit()
         });
+
         Clocks {
             uart_clk_div
         }

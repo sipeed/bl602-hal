@@ -9,6 +9,9 @@ use crate::pac::Peripherals;
 use embedded_hal::blocking::delay::{DelayUs};
 use crate::delay::*;
 pub struct Clocks {
+    target_clksrc: HbnRootClkType,
+    pll_xtal: GlbPllXtalType,
+    target_sys_ck: SysClk,
     uart_clk_div: u8,
 }
 
@@ -474,8 +477,15 @@ impl Strict {
             .uart_clk_en().set_bit()
         });
 
+        let target_clksrc = HbnRootClkType::PLL;
+        let pll_xtal = GlbPllXtalType::Xtal40m;
+        let target_sys_ck = SysClk::Pll160m;
+
         Clocks {
-            uart_clk_div
+            target_clksrc,
+            pll_xtal,
+            target_sys_ck,
+            uart_clk_div,
         }
     }
 }

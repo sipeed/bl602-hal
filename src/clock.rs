@@ -421,7 +421,8 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysCl
     }
 
     if target_core_clk > 120_000_000 {
-        dp.L1C.l1c_config.modify(|r, w| {w
+        let l1c = unsafe { &*pac::L1C::ptr() };
+        l1c.l1c_config.modify(|r, w| {w
             .irom_2t_access().set_bit()
         });
     }

@@ -6,7 +6,7 @@ use crate::gpio::ClkCfg;
 use core::{num::NonZeroU32, unimplemented};
 use embedded_time::rate::Hertz;
 use crate::pac::Peripherals;
-use embedded_hal::blocking::delay::{DelayUs, DelayMs};
+use embedded_hal::blocking::delay::{DelayUs};
 use crate::delay::*;
 pub struct Clocks {
     uart_clk_div: u8,
@@ -224,7 +224,6 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GlbPllXtalType) {
                 GlbPllXtalType::Xtal40m =>  0x30_0000,
                 GlbPllXtalType::Xtal26m =>  0x49_D39D,
                 GlbPllXtalType::RC32M =>  0x3C_0000,
-                _ =>  0x3C_0000,
             }
         )
     });

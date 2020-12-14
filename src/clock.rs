@@ -113,7 +113,7 @@ fn glb_set_system_clk_div(dp: &mut Peripherals, hclkdiv:u8, bclkdiv:u8){
 }
 
 
-fn pds_select_xtal_as_pll_ref(dp: &mut Peripherals){
+fn pds_select_xtal_as_pll_ref(){
     let pds = unsafe { &*pac::PDS::ptr() };
     pds.clkpll_top_ctrl.modify(|_r,w| {w
         .clkpll_refclk_sel().set_bit()
@@ -121,7 +121,7 @@ fn pds_select_xtal_as_pll_ref(dp: &mut Peripherals){
     });
 }
 
-fn pds_power_off_pll(dp: &mut Peripherals){
+fn pds_power_off_pll(){
     /* pu_clkpll_sfreg=0 */
     /* pu_clkpll=0 */
     let pds = unsafe { &*pac::PDS::ptr() };
@@ -143,7 +143,7 @@ fn pds_power_off_pll(dp: &mut Peripherals){
 }
 
 /// Minimal implementation of power-on pll. Currently only allows external xtal
-fn pds_power_on_pll(dp: &mut Peripherals, xtal: GlbPllXtalType) {
+fn pds_power_on_pll(xtal: GlbPllXtalType) {
     let pds = unsafe { &*pac::PDS::ptr() };
     let mut delay = McycleDelay::new(system_core_clock_get());
     /**************************/
@@ -156,14 +156,14 @@ fn pds_power_on_pll(dp: &mut Peripherals, xtal: GlbPllXtalType) {
             //pds_trim_rc32m(dp);
             //pds_select_rc32m_as_pll_ref(dp)
         },
-        _ => pds_select_xtal_as_pll_ref(dp)
+        _ => pds_select_xtal_as_pll_ref()
     }
 
     /*******************************************/
     /* PLL power down first, not indispensable */
     /*******************************************/
     /* power off PLL first, this step is not indispensable */
-    pds_power_off_pll(dp);
+    pds_power_off_pll();
 
     /********************/
     /* PLL param config */
@@ -316,7 +316,7 @@ fn aon_power_on_xtal(dp: &mut Peripherals) {
     // TODO: error out on timeout
 }
 
-fn hbn_set_root_clk_sel(dp: &mut Peripherals, sel: HbnRootClkType){
+fn hbn_set_root_clk_sel(sel: HbnRootClkType){
     let hbn = unsafe { &*pac::HBN::ptr() };
     hbn.hbn_glb.modify(|r,w| unsafe { w
         .hbn_root_clk_sel().bits(
@@ -347,7 +347,7 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysCl
     });
 
      /* Before config XTAL and PLL ,make sure root clk is from RC32M */
-    hbn_set_root_clk_sel(dp, HbnRootClkType::RC32M);
+    hbn_set_root_clk_sel(HbnRootClkType::RC32M);
 
     dp.GLB.clk_cfg0.modify(|_,w| unsafe { w
         .reg_hclk_div().bits(0)
@@ -379,7 +379,7 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysCl
     }
 
     /* always power up PLL and enable all PLL clock output */
-    pds_power_on_pll(dp, GlbPllXtalType::Xtal40m);
+    pds_power_on_pll(GlbPllXtalType::Xtal40m);
 
     let mut delay = McycleDelay::new(system_core_clock_get());
     delay.try_delay_us(55).unwrap();
@@ -425,7 +425,7 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysCl
         });
     }
     if target_core_clk > 0 {
-        hbn_set_root_clk_sel(dp, HbnRootClkType::PLL);
+        hbn_set_root_clk_sel(HbnRootClkType::PLL);
         system_core_clock_set(target_core_clk);
     }
 

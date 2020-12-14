@@ -73,14 +73,16 @@ pub enum SysClk {
     Pll192m = 5, // use PLL output 192M as system clock
 }
 
-pub fn system_core_clock_set(dp: &mut Peripherals, value:u32){
-    dp.HBN.hbn_rsv2.write(|w| unsafe { w
+pub fn system_core_clock_set(value:u32){
+    let hbn = unsafe { &*pac::HBN::ptr() };
+    hbn.hbn_rsv2.write(|w| unsafe { w
         .bits(value)
     })
 }
 
-pub fn system_core_clock_get(dp: &mut Peripherals) -> u32 {
-    dp.HBN.hbn_rsv2.read().bits()
+pub fn system_core_clock_get() -> u32 {
+    let hbn = unsafe { &*pac::HBN::ptr() };
+    hbn.hbn_rsv2.read().bits()
 }
 
 fn glb_set_system_clk_div(dp: &mut Peripherals, hclkdiv:u8, bclkdiv:u8){
@@ -93,14 +95,14 @@ fn glb_set_system_clk_div(dp: &mut Peripherals, hclkdiv:u8, bclkdiv:u8){
     });
     unsafe { glb_reg_bclk_dis.write_volatile(1) };
     unsafe { glb_reg_bclk_dis.write_volatile(0) };
-    let currclock = system_core_clock_get(dp);
-    system_core_clock_set(dp, currclock / (hclkdiv as u32 + 1) );
+    let currclock = system_core_clock_get();
+    system_core_clock_set(currclock / (hclkdiv as u32 + 1) );
 
     // The original delays in this function were 8 NOP instructions. at 32mhz, this is 1/4 of a us
     // but since we just changed our clock source, we'll wait the equivalent of 1us worth
     // of clocks at 160Mhz (this *should* be much longer than necessary)
     // Might be worth switching to asm once that stabilises - seems to be okay for now
-    let mut delay = McycleDelay::new(system_core_clock_get(dp));
+    let mut delay = McycleDelay::new(system_core_clock_get());
     delay.try_delay_us(1).unwrap();
 
     dp.GLB.clk_cfg0.modify(|_,w| { w
@@ -140,7 +142,7 @@ fn pds_power_off_pll(dp: &mut Peripherals){
 
 /// Minimal implementation of power-on pll. Currently only allows external xtal
 fn pds_power_on_pll(dp: &mut Peripherals, xtal: GlbPllXtalType) {
-    let mut delay = McycleDelay::new(system_core_clock_get(dp));
+    let mut delay = McycleDelay::new(system_core_clock_get());
     /**************************/
     /* select PLL XTAL source */
     /**************************/
@@ -301,7 +303,7 @@ fn aon_power_on_xtal(dp: &mut Peripherals) {
         .pu_xtal_buf_aon().set_bit()
     });
 
-    let mut delaysrc = McycleDelay::new(system_core_clock_get(dp));
+    let mut delaysrc = McycleDelay::new(system_core_clock_get());
     let mut timeout:u32 = 0;
     delaysrc.try_delay_us(10).unwrap();
     while dp.AON.tsen.read().xtal_rdy().bit_is_clear() && timeout < 120{
@@ -312,7 +314,8 @@ fn aon_power_on_xtal(dp: &mut Peripherals) {
 }
 
 fn hbn_set_root_clk_sel(dp: &mut Peripherals, sel: HbnRootClkType){
-    dp.HBN.hbn_glb.modify(|r,w| unsafe { w
+    let hbn = unsafe { &*pac::HBN::ptr() };
+    hbn.hbn_glb.modify(|r,w| unsafe { w
         .hbn_root_clk_sel().bits(
             match sel {
                 HbnRootClkType::RC32M => 0b00u8,
@@ -342,7 +345,7 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysCl
     });
 
     // Update sysclock
-    system_core_clock_set(dp, 32_000_000);
+    system_core_clock_set(32_000_000);
 
     /* Select PKA clock from hclk */
     dp.GLB.swrst_cfg2.modify(|_,w| { w
@@ -368,7 +371,7 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysCl
     /* always power up PLL and enable all PLL clock output */
     pds_power_on_pll(dp, GlbPllXtalType::Xtal40m);
 
-    let mut delay = McycleDelay::new(system_core_clock_get(dp));
+    let mut delay = McycleDelay::new(system_core_clock_get());
     delay.try_delay_us(55).unwrap();
 
     // PDS_Enable_PLL_All_Clks()
@@ -416,14 +419,14 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysCl
     }
     if target_core_clk > 0 {
         hbn_set_root_clk_sel(dp, HbnRootClkType::PLL);
-        system_core_clock_set(dp, target_core_clk);
+        system_core_clock_set(target_core_clk);
     }
 
     // GLB_CLK_SET_DUMMY_WAIT;
     // This was a set of 8 NOP instructions. at 32mhz, this is 1/4 of a us
     // but since we just changed our clock source, we'll wait the equivalent of 1us worth
     // of clocks at 160Mhz (this *should* be much longer than necessary)
-    let mut delay = McycleDelay::new(system_core_clock_get(dp));
+    let mut delay = McycleDelay::new(system_core_clock_get());
     delay.try_delay_us(1).unwrap();
 
     /* select PKA clock from 120M since we power up PLL */

@@ -85,11 +85,12 @@ pub fn system_core_clock_get() -> u32 {
     hbn.hbn_rsv2.read().bits()
 }
 
-fn glb_set_system_clk_div(dp: &mut Peripherals, hclkdiv:u8, bclkdiv:u8){
+fn glb_set_system_clk_div(hclkdiv:u8, bclkdiv:u8){
     // recommended: fclk<=160MHz, bclk<=80MHz
     // fclk is determined by hclk_div (strange), which then feeds into bclk, hclk and uartclk
     let glb_reg_bclk_dis = 0x40000FFC as * mut u32;
-    dp.GLB.clk_cfg0.modify(|_,w| unsafe { w
+    let glb = unsafe { &*pac::GLB::ptr() };
+    glb.clk_cfg0.modify(|_,w| unsafe { w
         .reg_hclk_div().bits(hclkdiv)
         .reg_bclk_div().bits(bclkdiv)
     });
@@ -105,7 +106,7 @@ fn glb_set_system_clk_div(dp: &mut Peripherals, hclkdiv:u8, bclkdiv:u8){
     let mut delay = McycleDelay::new(system_core_clock_get());
     delay.try_delay_us(1).unwrap();
 
-    dp.GLB.clk_cfg0.modify(|_,w| { w
+    glb.clk_cfg0.modify(|_,w| { w
         .reg_hclk_en().set_bit()
         .reg_bclk_en().set_bit()
     });
@@ -339,9 +340,10 @@ fn pds_enable_pll_all_clks(){
 
 /// Setup XTAL and PLL for system clock
 /// TODO: finish clock init - some parts are hard-coded for 40Mhz XTAL + 160Mhz target clock
-pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysClk) {
+pub fn glb_set_system_clk(xtal: GlbPllXtalType, clk: SysClk) {
     /* reg_bclk_en = reg_hclk_en = reg_fclk_en = 1, cannot be zero */
-    dp.GLB.clk_cfg0.modify(|_, w| { w
+    let glb = unsafe { &*pac::GLB::ptr() };
+    glb.clk_cfg0.modify(|_, w| { w
         .reg_bclk_en().set_bit()
         .reg_hclk_en().set_bit()
         .reg_fclk_en().set_bit()
@@ -350,7 +352,7 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysCl
      /* Before config XTAL and PLL ,make sure root clk is from RC32M */
     hbn_set_root_clk_sel(HbnRootClkType::RC32M);
 
-    dp.GLB.clk_cfg0.modify(|_,w| unsafe { w
+    glb.clk_cfg0.modify(|_,w| unsafe { w
         .reg_hclk_div().bits(0)
         .reg_bclk_div().bits(0)
     });
@@ -359,7 +361,7 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysCl
     system_core_clock_set(32_000_000);
 
     /* Select PKA clock from hclk */
-    dp.GLB.swrst_cfg2.modify(|_,w| { w
+    glb.swrst_cfg2.modify(|_,w| { w
         .pka_clk_sel().clear_bit()
     });
 
@@ -388,14 +390,14 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysCl
     pds_enable_pll_all_clks();
     
     /* reg_pll_en = 1, cannot be zero */
-    dp.GLB.clk_cfg0.modify(|_, w| {w
+    glb.clk_cfg0.modify(|_, w| {w
         .reg_pll_en().set_bit()
     });
 
     /* select pll output clock before select root clock */
     // sets to clkFreq-GLB_SYS_CLK_PLL48M, where PLL160M is 2 more than PLL48M
     // Doing this with a match seems more Rusty
-    dp.GLB.clk_cfg0.modify(|_, w| unsafe {w
+    glb.clk_cfg0.modify(|_, w| unsafe {w
         .reg_pll_sel().bits(
             match clk {
                 SysClk::Pll48m => 0,
@@ -417,7 +419,7 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysCl
     };
 
     if target_core_clk > 48_000_000 {
-        glb_set_system_clk_div(dp,0, 1);
+        glb_set_system_clk_div(0, 1);
     }
 
     if target_core_clk > 120_000_000 {
@@ -441,7 +443,7 @@ pub fn glb_set_system_clk(dp: &mut Peripherals, xtal: GlbPllXtalType, clk: SysCl
     /* select PKA clock from 120M since we power up PLL */
     // NOTE: This isn't documented in the datasheet!
     // GLB_Set_PKA_CLK_Sel(GLB_PKA_CLK_PLL120M);
-    dp.GLB.swrst_cfg2.write(|w| { w
+    glb.swrst_cfg2.write(|w| { w
         .pka_clk_sel().set_bit()
     });
 }

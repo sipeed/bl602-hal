@@ -9,9 +9,8 @@ use crate::pac::Peripherals;
 use embedded_hal::blocking::delay::{DelayUs};
 use crate::delay::*;
 pub struct Clocks {
-    target_clksrc: HbnRootClkType,
-    pll_xtal: GlbPllXtalType,
-    target_sys_ck: SysClk,
+    pll_xtal_freq: u32,
+    target_sys_ck: u32,
     uart_clk_div: u8,
 }
 
@@ -47,32 +46,6 @@ enum HbnRootClkType {
     Rc32m = 0,           // use RC32M as root clock
     Xtal  = 1,           // use XTAL as root clock
     Pll   = 2,           // use PLL as root clock
-}
-
-/**
- *  @brief PLL XTAL type definition
- */
- #[allow(dead_code)]
- #[repr(u8)]
- #[derive(PartialEq)]
-pub enum GlbPllXtalType {
-    None        = 0,     // XTAL is none
-    Xtal24m    = 1,     // XTAL is 24M
-    Xtal32m    = 2,     // XTAL is 32M
-    Xtal38p4m  = 3,     // XTAL is 38.4M
-    Xtal40m    = 4,     // XTAL is 40M
-    Xtal26m    = 5,     // XTAL is 26M
-    Rc32m       = 6,     // XTAL is RC32M
-}
-#[allow(dead_code)]
-#[derive(PartialEq)]
-pub enum SysClk {
-    Rc32m   = 0, // use RC32M as system clock frequency
-    Xtal    = 1, // use XTAL as system clock
-    Pll48m  = 2, // use PLL output 48M as system clock
-    Pll120m = 3, // use PLL output 120M as system clock
-    Pll160m = 4, // use PLL output 160M as system clock
-    Pll192m = 5, // use PLL output 192M as system clock
 }
 
 pub fn system_core_clock_set(value:u32){
@@ -329,18 +302,19 @@ fn glb_set_system_clk_rc32(){
 /// Settling for two configuration options for now:
 ///   - internal 32Mhz RC oscillator for sysclock
 ///   - XTAL driving PLL, sysclock frequencies of 48/80/120/160/192Mhz
-pub fn glb_set_system_clk(xtal: GlbPllXtalType, clk: SysClk) {
+pub fn glb_set_system_clk(xtal_freq: u32, sysclk_freq: u32) {
     // Ensure clock is running off internal RC oscillator before changing anything else
     glb_set_system_clk_rc32();
-    if xtal == GlbPllXtalType::None && clk == SysClk::Rc32m {
-        // Target clock is the same as our safe default, so we don't have to do any more
-        return;
+    // if target clock is 32Mhz we don't have to do any more
+    if sysclk_freq == 32_000_000{
+        return
+    } else {
+        // Configure XTAL, PLL and select it as clock source for fclk
+        glb_set_system_clk_pll(sysclk_freq, xtal_freq)
     }
-    // Configure XTAL, PLL and select it as clock source for fclk
-    glb_set_system_clk_pll(clk, 40_000_000);
 }
 
-fn glb_set_system_clk_pll(clk: SysClk, xtal_freq: u32) {
+fn glb_set_system_clk_pll(clk: u32, xtal_freq: u32) {
     /* reg_bclk_en = reg_hclk_en = reg_fclk_en = 1, cannot be zero */
     let glb = unsafe { &*pac::GLB::ptr() };
     // Power up the external crystal before we start up the PLL
@@ -365,23 +339,16 @@ fn glb_set_system_clk_pll(clk: SysClk, xtal_freq: u32) {
     glb.clk_cfg0.modify(|_, w| unsafe {w
         .reg_pll_sel().bits(
             match clk {
-                SysClk::Pll48m => 0,
-                SysClk::Pll120m => 1,
-                SysClk::Pll160m => 2,
-                SysClk::Pll192m => 3,
+                48_000_000 => 0,
+                120_000_000 => 1,
+                160_000_000 => 2,
+                192_000_000 => 3,
                 _ => {panic!()}
             }
         )
     });
 
-    let target_core_clk = match clk{
-        SysClk::Rc32m => 0,
-        SysClk::Xtal => 0,
-        SysClk::Pll48m => 48_000_000,
-        SysClk::Pll120m => 120_000_000,
-        SysClk::Pll160m => 160_000_000,
-        SysClk::Pll192m => 192_000_000,
-    };
+    let target_core_clk = clk;
 
     if target_core_clk > 48_000_000 {
         glb_set_system_clk_div(0, 1);
@@ -393,10 +360,10 @@ fn glb_set_system_clk_pll(clk: SysClk, xtal_freq: u32) {
             .irom_2t_access().set_bit()
         });
     }
-    if target_core_clk > 0 {
-        hbn_set_root_clk_sel(HbnRootClkType::Pll);
-        system_core_clock_set(target_core_clk);
-    }
+
+    hbn_set_root_clk_sel(HbnRootClkType::Pll);
+    system_core_clock_set(target_core_clk);
+    
 
     // GLB_CLK_SET_DUMMY_WAIT;
     // This was a set of 8 NOP instructions. at 32mhz, this is 1/4 of a us
@@ -456,13 +423,11 @@ impl Strict {
             .uart_clk_en().set_bit()
         });
 
-        let target_clksrc = HbnRootClkType::Pll;
-        let pll_xtal = GlbPllXtalType::Xtal40m;
-        let target_sys_ck = SysClk::Pll160m;
+        let pll_xtal_freq = 40_000_000;
+        let target_sys_ck = 160_000_000;
 
         Clocks {
-            target_clksrc,
-            pll_xtal,
+            pll_xtal_freq,
             target_sys_ck,
             uart_clk_div,
         }

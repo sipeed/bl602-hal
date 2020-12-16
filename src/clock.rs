@@ -304,8 +304,7 @@ fn pds_enable_pll_all_clks(){
     });
 }
 
-/// Setup XTAL and PLL for system clock
-/// TODO: finish clock init - some parts are hard-coded for 40Mhz XTAL + 160Mhz target clock
+/// Set the system clock to use the internal 32Mhz RC oscillator
 fn glb_set_system_clk_rc32(){
     /* reg_bclk_en = reg_hclk_en = reg_fclk_en = 1, cannot be zero */
     let glb = unsafe { &*pac::GLB::ptr() };

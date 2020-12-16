@@ -54,6 +54,7 @@ enum HbnRootClkType {
  */
  #[allow(dead_code)]
  #[repr(u8)]
+ #[derive(PartialEq)]
 pub enum GlbPllXtalType {
     None        = 0,     // XTAL is none
     Xtal24m    = 1,     // XTAL is 24M
@@ -64,6 +65,7 @@ pub enum GlbPllXtalType {
     Rc32m       = 6,     // XTAL is RC32M
 }
 #[allow(dead_code)]
+#[derive(PartialEq)]
 pub enum SysClk {
     Rc32m   = 0, // use RC32M as system clock frequency
     Xtal    = 1, // use XTAL as system clock
@@ -340,7 +342,7 @@ fn pds_enable_pll_all_clks(){
 
 /// Setup XTAL and PLL for system clock
 /// TODO: finish clock init - some parts are hard-coded for 40Mhz XTAL + 160Mhz target clock
-pub fn glb_set_system_clk(xtal: GlbPllXtalType, clk: SysClk) {
+fn glb_set_system_clk_rc32(){
     /* reg_bclk_en = reg_hclk_en = reg_fclk_en = 1, cannot be zero */
     let glb = unsafe { &*pac::GLB::ptr() };
     glb.clk_cfg0.modify(|_, w| { w
@@ -364,22 +366,30 @@ pub fn glb_set_system_clk(xtal: GlbPllXtalType, clk: SysClk) {
     glb.swrst_cfg2.modify(|_,w| { w
         .pka_clk_sel().clear_bit()
     });
+}
 
-    // If we asked for no PLL and RC32 as clock, we're done
-    // TODO: return Ok/Err
-    // If we asked for PLL and RC32, do nothing
-    // Else, we're using crystal so power that on
-    match xtal {
-        GlbPllXtalType::None => match clk {
-            SysClk::Rc32m => return,
-            _ => {}
-        },
-        GLB_PLL_XTAL_RC32M => {}
-        _ => {
-            /* AON_Power_On_XTAL(); */
-            aon_power_on_xtal();
-        }
+/// Original code supported a bunch of configurations for core clock
+/// There are probably uses for driving PLL using RC or using XTAL direct for root clock,
+/// but it complicates something that is already sufficiently complex.
+/// Settling for two configuration options for now:
+///   - internal 32Mhz RC oscillator for sysclock
+///   - XTAL driving PLL, sysclock frequencies of 48/80/120/160/192Mhz
+pub fn glb_set_system_clk(xtal: GlbPllXtalType, clk: SysClk) {
+    // Ensure clock is running off internal RC oscillator before changing anything else
+    glb_set_system_clk_rc32();
+    if xtal == GlbPllXtalType::None && clk == SysClk::Rc32m {
+        // Target clock is the same as our safe default, so we don't have to do any more
+        return;
     }
+    // Configure XTAL, PLL and select it as clock source for fclk
+    glb_set_system_clk_pll(clk);
+}
+
+fn glb_set_system_clk_pll(clk: SysClk) {
+    /* reg_bclk_en = reg_hclk_en = reg_fclk_en = 1, cannot be zero */
+    let glb = unsafe { &*pac::GLB::ptr() };
+    // Power up the external crystal before we start up the PLL
+    aon_power_on_xtal();
 
     /* always power up PLL and enable all PLL clock output */
     pds_power_on_pll(GlbPllXtalType::Xtal40m);

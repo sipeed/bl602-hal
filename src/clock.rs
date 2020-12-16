@@ -146,17 +146,9 @@ fn pds_power_off_pll(){
 }
 
 /// Minimal implementation of power-on pll. Currently only allows external xtal
-fn pds_power_on_pll(xtal: GlbPllXtalType) {
+fn pds_power_on_pll(freq: u32) {
     let pds = unsafe { &*pac::PDS::ptr() };
     let mut delay = McycleDelay::new(system_core_clock_get());
-    let freq = match xtal{
-        Xtal24m => 24_000_000,
-        Xtal32m => 32_000_000,
-        Xtal38p4m => 38_400_000,
-        Xtal40m => 40_000_000,
-        Xtal26m => 26_000_000,
-        _ => panic!()
-    };
 
     /**************************/
     /* select PLL XTAL source */
@@ -345,17 +337,17 @@ pub fn glb_set_system_clk(xtal: GlbPllXtalType, clk: SysClk) {
         return;
     }
     // Configure XTAL, PLL and select it as clock source for fclk
-    glb_set_system_clk_pll(clk);
+    glb_set_system_clk_pll(clk, 40_000_000);
 }
 
-fn glb_set_system_clk_pll(clk: SysClk) {
+fn glb_set_system_clk_pll(clk: SysClk, xtal_freq: u32) {
     /* reg_bclk_en = reg_hclk_en = reg_fclk_en = 1, cannot be zero */
     let glb = unsafe { &*pac::GLB::ptr() };
     // Power up the external crystal before we start up the PLL
     aon_power_on_xtal();
 
     /* always power up PLL and enable all PLL clock output */
-    pds_power_on_pll(GlbPllXtalType::Xtal40m);
+    pds_power_on_pll(xtal_freq);
 
     let mut delay = McycleDelay::new(system_core_clock_get());
     delay.try_delay_us(55).unwrap();

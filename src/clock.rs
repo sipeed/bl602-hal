@@ -39,15 +39,6 @@ pub struct Strict {
     target_uart_clk: Option<NonZeroU32>,
 }
 
-/// HBN root clock type definition
-#[allow(dead_code)]
-#[repr(u8)]
-enum HbnRootClkType {
-    Rc32m = 0,           // use RC32M as root clock
-    Xtal  = 1,           // use XTAL as root clock
-    Pll   = 2,           // use PLL as root clock
-}
-
 pub fn system_core_clock_set(value:u32){
     let hbn = unsafe { &*pac::HBN::ptr() };
     hbn.hbn_rsv2.write(|w| unsafe { w
@@ -249,16 +240,19 @@ fn aon_power_on_xtal() {
     // TODO: error out on timeout
 }
 
-fn hbn_set_root_clk_sel(sel: HbnRootClkType){
+fn hbn_set_root_clk_sel_pll(){
     let hbn = unsafe { &*pac::HBN::ptr() };
     hbn.hbn_glb.modify(|r,w| unsafe { w
         .hbn_root_clk_sel().bits(
-            match sel {
-                HbnRootClkType::Rc32m => 0b00u8,
-                HbnRootClkType::Xtal => 0b01u8,
-                HbnRootClkType::Pll => r.hbn_root_clk_sel().bits() as u8 | 0b10u8
-            }
+            r.hbn_root_clk_sel().bits() as u8 | 0b10u8
         )
+    });
+}
+
+fn hbn_set_root_clk_sel_rc32(){
+    let hbn = unsafe { &*pac::HBN::ptr() };
+    hbn.hbn_glb.modify(|r,w| unsafe { w
+        .hbn_root_clk_sel().bits(0b00u8)
     });
 }
 
@@ -280,7 +274,7 @@ fn glb_set_system_clk_rc32(){
     });
 
      /* Before config XTAL and PLL ,make sure root clk is from RC32M */
-    hbn_set_root_clk_sel(HbnRootClkType::Rc32m);
+    hbn_set_root_clk_sel_rc32();
 
     glb.clk_cfg0.modify(|_,w| unsafe { w
         .reg_hclk_div().bits(0)
@@ -361,7 +355,7 @@ fn glb_set_system_clk_pll(clk: u32, xtal_freq: u32) {
         });
     }
 
-    hbn_set_root_clk_sel(HbnRootClkType::Pll);
+    hbn_set_root_clk_sel_pll();
     system_core_clock_set(target_core_clk);
     
 

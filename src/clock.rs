@@ -172,10 +172,6 @@ fn pds_power_on_pll(xtal: GlbPllXtalType) {
     /* PLL param config */
     /********************/
 
-    // /* clkpll_icp_1u */
-    // /* clkpll_icp_5u */
-    // /* clkpll_int_frac_sw */
-
     // The C code uses the same representation for both GLB_PLL_XTAL and PDS_PLL_XTAL - reusing that type
     match xtal {
         GlbPllXtalType::Xtal26m => {
@@ -194,11 +190,6 @@ fn pds_power_on_pll(xtal: GlbPllXtalType) {
         }
     }
 
-    // /* clkpll_c3 */
-    // /* clkpll_cz */
-    // /* clkpll_rz */
-    // /* clkpll_r4 */
-    // /* clkpll_r4_short */
     match xtal {
         GlbPllXtalType::Xtal26m => {
             pds.clkpll_rz.modify(|_r, w| unsafe {w
@@ -217,14 +208,11 @@ fn pds_power_on_pll(xtal: GlbPllXtalType) {
             });
         }
     }
-    // /* clkpll_refdiv_ratio */
-    // /* clkpll_postdiv */
     pds.clkpll_top_ctrl.modify(|_r, w| unsafe {w
         .clkpll_postdiv().bits(0x14)
         .clkpll_refdiv_ratio().bits(2)
     });
 
-    // /* clkpll_sdmin */
     pds.clkpll_sdm.modify(|_r, w| unsafe {w
         .clkpll_sdmin().bits(
             match xtal {
@@ -239,8 +227,6 @@ fn pds_power_on_pll(xtal: GlbPllXtalType) {
         )
     });
 
-    // /* clkpll_sel_fb_clk */
-    // /* clkpll_sel_sample_clk can be 0/1, default is 1 */
     pds.clkpll_fbdv.modify(|_r, w| unsafe {w
         .clkpll_sel_fb_clk().bits(1)
         .clkpll_sel_sample_clk().bits(1)
@@ -249,55 +235,43 @@ fn pds_power_on_pll(xtal: GlbPllXtalType) {
     /*************************/
     /* PLL power up sequence */
     /*************************/
-
-    /* pu_clkpll_sfreg=1 */
     pds.pu_rst_clkpll.modify(|_r, w| {w
         .pu_clkpll_sfreg().set_bit()
     });
 
-    //DelayUs(5);
     delay.try_delay_us(5).unwrap();
 
-    /* pu_clkpll=1 */
     pds.pu_rst_clkpll.modify(|_r, w| {w
         .pu_clkpll().set_bit()
     });
 
-    /* clkpll_pu_cp=1 */
-    /* clkpll_pu_pfd=1 */
-    /* clkpll_pu_fbdv=1 */
-    /* clkpll_pu_postdiv=1 */
     pds.pu_rst_clkpll.modify(|_r, w| {w
         .clkpll_pu_cp().set_bit()
         .clkpll_pu_pfd().set_bit()
         .clkpll_pu_fbdv().set_bit()
         .clkpll_pu_postdiv().set_bit()
     });
-    //DelayUs(5);
+
     delay.try_delay_us(5).unwrap();
 
-    /* clkpll_sdm_reset=1 */
     pds.pu_rst_clkpll.modify(|_r, w| {w
         .clkpll_sdm_reset().set_bit()
     });
-    // BL602_Delay_US(1);
+
     delay.try_delay_us(1).unwrap();
 
-    /* clkpll_reset_fbdv=1 */
     pds.pu_rst_clkpll.modify(|_r, w| {w
         .clkpll_reset_fbdv().set_bit()
     });
-    // BL602_Delay_US(2);
+
     delay.try_delay_us(2).unwrap();
 
-    /* clkpll_reset_fbdv=0 */
     pds.pu_rst_clkpll.modify(|_r, w| {w
         .clkpll_reset_fbdv().clear_bit()
     });
-    // BL602_Delay_US(1);
+
     delay.try_delay_us(1).unwrap();
 
-    /* clkpll_sdm_reset=0 */
     pds.pu_rst_clkpll.modify(|_r, w| {w
         .clkpll_sdm_reset().clear_bit()
     });

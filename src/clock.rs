@@ -149,18 +149,19 @@ fn pds_power_off_pll(){
 fn pds_power_on_pll(xtal: GlbPllXtalType) {
     let pds = unsafe { &*pac::PDS::ptr() };
     let mut delay = McycleDelay::new(system_core_clock_get());
+    let freq = match xtal{
+        Xtal24m => 24_000_000,
+        Xtal32m => 32_000_000,
+        Xtal38p4m => 38_400_000,
+        Xtal40m => 40_000_000,
+        Xtal26m => 26_000_000,
+        _ => panic!()
+    };
+
     /**************************/
     /* select PLL XTAL source */
     /**************************/
-    match xtal {
-        // TODO: There's a pretty big chunk of translation to do to support RC32 as the PLL source.
-        GlbPllXtalType::Rc32m | GlbPllXtalType::None => {
-            unimplemented!();
-            //pds_trim_rc32m(dp);
-            //pds_select_rc32m_as_pll_ref(dp)
-        },
-        _ => pds_select_xtal_as_pll_ref()
-    }
+    pds_select_xtal_as_pll_ref();
 
     /*******************************************/
     /* PLL power down first, not indispensable */
@@ -172,34 +173,30 @@ fn pds_power_on_pll(xtal: GlbPllXtalType) {
     /* PLL param config */
     /********************/
 
-    // The C code uses the same representation for both GLB_PLL_XTAL and PDS_PLL_XTAL - reusing that type
-    match xtal {
-        GlbPllXtalType::Xtal26m => {
-            pds.clkpll_cp.modify(|_r, w| unsafe {w
-                .clkpll_icp_1u().bits(1)
-                .clkpll_icp_5u().bits(0)
-                .clkpll_int_frac_sw().set_bit()
-            });
-            pds.clkpll_rz.modify(|_r, w| unsafe {w
-                .clkpll_c3().bits(2)
-                .clkpll_cz().bits(2)
-                .clkpll_rz().bits(5)
-                .clkpll_r4_short().clear_bit()
-            });
-        },
-        _ => {
-            pds.clkpll_cp.modify(|_r, w| unsafe {w
-                .clkpll_icp_1u().bits(0)
-                .clkpll_icp_5u().bits(2)
-                .clkpll_int_frac_sw().clear_bit()
-            });
-            pds.clkpll_rz.modify(|_r, w| unsafe {w
-                .clkpll_c3().bits(3)
-                .clkpll_cz().bits(1)
-                .clkpll_rz().bits(1)
-                .clkpll_r4_short().set_bit()
-            });
-        }
+    if freq == 26_000_000 {
+        pds.clkpll_cp.modify(|_r, w| unsafe {w
+            .clkpll_icp_1u().bits(1)
+            .clkpll_icp_5u().bits(0)
+            .clkpll_int_frac_sw().set_bit()
+        });
+        pds.clkpll_rz.modify(|_r, w| unsafe {w
+            .clkpll_c3().bits(2)
+            .clkpll_cz().bits(2)
+            .clkpll_rz().bits(5)
+            .clkpll_r4_short().clear_bit()
+        });
+    } else {
+        pds.clkpll_cp.modify(|_r, w| unsafe {w
+            .clkpll_icp_1u().bits(0)
+            .clkpll_icp_5u().bits(2)
+            .clkpll_int_frac_sw().clear_bit()
+        });
+        pds.clkpll_rz.modify(|_r, w| unsafe {w
+            .clkpll_c3().bits(3)
+            .clkpll_cz().bits(1)
+            .clkpll_rz().bits(1)
+            .clkpll_r4_short().set_bit()
+        });
     }
 
     pds.clkpll_top_ctrl.modify(|_r, w| unsafe {w
@@ -209,14 +206,13 @@ fn pds_power_on_pll(xtal: GlbPllXtalType) {
 
     pds.clkpll_sdm.modify(|_r, w| unsafe {w
         .clkpll_sdmin().bits(
-            match xtal {
-                GlbPllXtalType::None =>  0x3C_0000,
-                GlbPllXtalType::Xtal24m =>  0x50_0000,
-                GlbPllXtalType::Xtal32m =>  0x3C_0000,
-                GlbPllXtalType::Xtal38p4m =>  0x32_0000,
-                GlbPllXtalType::Xtal40m =>  0x30_0000,
-                GlbPllXtalType::Xtal26m =>  0x49_D39D,
-                GlbPllXtalType::Rc32m =>  0x3C_0000,
+            match freq {
+                24_000_000 =>  0x50_0000,
+                32_000_000 =>  0x3C_0000,
+                38_400_000 =>  0x32_0000,
+                40_000_000 =>  0x30_0000,
+                26_000_000 =>  0x49_D39D,
+                _ => panic!()
             }
         )
     });

@@ -180,18 +180,6 @@ fn pds_power_on_pll(xtal: GlbPllXtalType) {
                 .clkpll_icp_5u().bits(0)
                 .clkpll_int_frac_sw().set_bit()
             });
-        },
-        _ => {
-            pds.clkpll_cp.modify(|_r, w| unsafe {w
-                .clkpll_icp_1u().bits(0)
-                .clkpll_icp_5u().bits(2)
-                .clkpll_int_frac_sw().clear_bit()
-            });
-        }
-    }
-
-    match xtal {
-        GlbPllXtalType::Xtal26m => {
             pds.clkpll_rz.modify(|_r, w| unsafe {w
                 .clkpll_c3().bits(2)
                 .clkpll_cz().bits(2)
@@ -200,6 +188,11 @@ fn pds_power_on_pll(xtal: GlbPllXtalType) {
             });
         },
         _ => {
+            pds.clkpll_cp.modify(|_r, w| unsafe {w
+                .clkpll_icp_1u().bits(0)
+                .clkpll_icp_5u().bits(2)
+                .clkpll_int_frac_sw().clear_bit()
+            });
             pds.clkpll_rz.modify(|_r, w| unsafe {w
                 .clkpll_c3().bits(3)
                 .clkpll_cz().bits(1)
@@ -208,6 +201,7 @@ fn pds_power_on_pll(xtal: GlbPllXtalType) {
             });
         }
     }
+
     pds.clkpll_top_ctrl.modify(|_r, w| unsafe {w
         .clkpll_postdiv().bits(0x14)
         .clkpll_refdiv_ratio().bits(2)

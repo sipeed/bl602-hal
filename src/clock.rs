@@ -15,6 +15,14 @@ pub struct Clocks {
 }
 
 impl Clocks {
+    pub fn new() -> Self {
+        Clocks {
+            pll_xtal_freq: 0,
+            sysclk: 32_000_000,
+            uart_clk_div: 0,
+        }
+    }
+
     pub fn use_pll<F>(mut self, freq: F) -> Self
     where
         F: Into<Hertz>,

@@ -54,6 +54,8 @@ pub fn system_core_clock_get() -> u32 {
 fn glb_set_system_clk_div(hclkdiv:u8, bclkdiv:u8){
     // recommended: fclk<=160MHz, bclk<=80MHz
     // fclk is determined by hclk_div (strange), which then feeds into bclk, hclk and uartclk
+    // glb_reg_bclk_dis isn't in the SVD file, so it isn't generated through svd2rust 
+    // It's only used here.
     let glb_reg_bclk_dis = 0x40000FFC as * mut u32;
     let glb = unsafe { &*pac::GLB::ptr() };
     glb.clk_cfg0.modify(|_,w| unsafe { w
@@ -65,11 +67,8 @@ fn glb_set_system_clk_div(hclkdiv:u8, bclkdiv:u8){
     let currclock = system_core_clock_get();
     system_core_clock_set(currclock / (hclkdiv as u32 + 1) );
 
-    // The original delays in this function were 8 NOP instructions. at 32mhz, this is 1/4 of a us
-    // but since we just changed our clock source, we'll wait the equivalent of 1us worth
-    // of clocks at 160Mhz (this *should* be much longer than necessary)
-    // Might be worth switching to asm once that stabilises - seems to be okay for now
     let mut delay = McycleDelay::new(system_core_clock_get());
+    // This delay used to be 8 NOPS (1/4 us). Might need to be replaced again.
     delay.try_delay_us(1).unwrap();
 
     glb.clk_cfg0.modify(|_,w| { w
@@ -89,18 +88,12 @@ fn pds_select_xtal_as_pll_ref(){
 }
 
 fn pds_power_off_pll(){
-    /* pu_clkpll_sfreg=0 */
-    /* pu_clkpll=0 */
     let pds = unsafe { &*pac::PDS::ptr() };
     pds.pu_rst_clkpll.modify(|_r, w| {w
         .pu_clkpll_sfreg().clear_bit()
         .pu_clkpll().clear_bit()
     });
 
-    /* clkpll_pu_cp=0 */
-    /* clkpll_pu_pfd=0 */
-    /* clkpll_pu_fbdv=0 */
-    /* clkpll_pu_postdiv=0 */
     pds.pu_rst_clkpll.modify(|_r, w| {w
         .clkpll_pu_cp().clear_bit()
         .clkpll_pu_pfd().clear_bit()
@@ -114,21 +107,13 @@ fn pds_power_on_pll(freq: u32) {
     let pds = unsafe { &*pac::PDS::ptr() };
     let mut delay = McycleDelay::new(system_core_clock_get());
 
-    /**************************/
-    /* select PLL XTAL source */
-    /**************************/
     pds_select_xtal_as_pll_ref();
 
-    /*******************************************/
-    /* PLL power down first, not indispensable */
-    /*******************************************/
-    /* power off PLL first, this step is not indispensable */
+    // power off PLL first - this step is required
     pds_power_off_pll();
 
-    /********************/
-    /* PLL param config */
-    /********************/
-
+    // PLL param config
+    //TODO: document + research this a bit more to work out if we can run at other frequecies
     if freq == 26_000_000 {
         pds.clkpll_cp.modify(|_r, w| unsafe {w
             .clkpll_icp_1u().bits(1)
@@ -265,7 +250,7 @@ fn pds_enable_pll_all_clks(){
 
 /// Set the system clock to use the internal 32Mhz RC oscillator
 fn glb_set_system_clk_rc32(){
-    /* reg_bclk_en = reg_hclk_en = reg_fclk_en = 1, cannot be zero */
+    // reg_bclk_en = reg_hclk_en = reg_fclk_en = 1, cannot be zero
     let glb = unsafe { &*pac::GLB::ptr() };
     glb.clk_cfg0.modify(|_, w| { w
         .reg_bclk_en().set_bit()
@@ -273,7 +258,7 @@ fn glb_set_system_clk_rc32(){
         .reg_fclk_en().set_bit()
     });
 
-     /* Before config XTAL and PLL ,make sure root clk is from RC32M */
+    // Before config XTAL and PLL ,make sure root clk is from RC32M
     hbn_set_root_clk_sel_rc32();
 
     glb.clk_cfg0.modify(|_,w| unsafe { w
@@ -284,7 +269,7 @@ fn glb_set_system_clk_rc32(){
     // Update sysclock
     system_core_clock_set(32_000_000);
 
-    /* Select PKA clock from hclk */
+    // Select PKA clock from hclk
     glb.swrst_cfg2.modify(|_,w| { w
         .pka_clk_sel().clear_bit()
     });
@@ -309,12 +294,11 @@ pub fn glb_set_system_clk(xtal_freq: u32, sysclk_freq: u32) {
 }
 
 fn glb_set_system_clk_pll(clk: u32, xtal_freq: u32) {
-    /* reg_bclk_en = reg_hclk_en = reg_fclk_en = 1, cannot be zero */
     let glb = unsafe { &*pac::GLB::ptr() };
     // Power up the external crystal before we start up the PLL
     aon_power_on_xtal();
 
-    /* always power up PLL and enable all PLL clock output */
+    // Power up PLL and enable all PLL clock output
     pds_power_on_pll(xtal_freq);
 
     let mut delay = McycleDelay::new(system_core_clock_get());
@@ -322,14 +306,14 @@ fn glb_set_system_clk_pll(clk: u32, xtal_freq: u32) {
 
     pds_enable_pll_all_clks();
     
-    /* reg_pll_en = 1, cannot be zero */
+    // Enable PLL
     glb.clk_cfg0.modify(|_, w| {w
         .reg_pll_en().set_bit()
     });
 
-    /* select pll output clock before select root clock */
-    // sets to clkFreq-GLB_SYS_CLK_PLL48M, where PLL160M is 2 more than PLL48M
-    // Doing this with a match seems more Rusty
+    // select which pll output clock to use before 
+    // selecting root clock via HBN_Set_ROOT_CLK_Sel
+    // Note that 192Mhz is out of spec
     glb.clk_cfg0.modify(|_, w| unsafe {w
         .reg_pll_sel().bits(
             match clk {
@@ -344,10 +328,12 @@ fn glb_set_system_clk_pll(clk: u32, xtal_freq: u32) {
 
     let target_core_clk = clk;
 
+    // Keep bclk <= 80MHz
     if target_core_clk > 48_000_000 {
         glb_set_system_clk_div(0, 1);
     }
 
+    // For frequencies above 120Mhz we need 2 clocks to access internal rom
     if target_core_clk > 120_000_000 {
         let l1c = unsafe { &*pac::L1C::ptr() };
         l1c.l1c_config.modify(|r, w| {w
@@ -356,19 +342,14 @@ fn glb_set_system_clk_pll(clk: u32, xtal_freq: u32) {
     }
 
     hbn_set_root_clk_sel_pll();
-    system_core_clock_set(target_core_clk);
+    system_core_clock_set(clk);
     
-
-    // GLB_CLK_SET_DUMMY_WAIT;
-    // This was a set of 8 NOP instructions. at 32mhz, this is 1/4 of a us
-    // but since we just changed our clock source, we'll wait the equivalent of 1us worth
-    // of clocks at 160Mhz (this *should* be much longer than necessary)
     let mut delay = McycleDelay::new(system_core_clock_get());
+    // This delay used to be 8 NOPS (1/4 us). (GLB_CLK_SET_DUMMY_WAIT) Might need to be replaced again.
     delay.try_delay_us(1).unwrap();
 
-    /* select PKA clock from 120M since we power up PLL */
+    // use 120Mhz PLL tap for PKA clock since we're using PLL
     // NOTE: This isn't documented in the datasheet!
-    // GLB_Set_PKA_CLK_Sel(GLB_PKA_CLK_PLL120M);
     glb.swrst_cfg2.write(|w| { w
         .pka_clk_sel().set_bit()
     });

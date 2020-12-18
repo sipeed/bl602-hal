@@ -293,7 +293,7 @@ pub fn glb_set_system_clk(xtal_freq: u32, sysclk_freq: u32) {
     }
 }
 
-fn glb_set_system_clk_pll(clk: u32, xtal_freq: u32) {
+fn glb_set_system_clk_pll(target_core_clk: u32, xtal_freq: u32) {
     let glb = unsafe { &*pac::GLB::ptr() };
     // Power up the external crystal before we start up the PLL
     aon_power_on_xtal();
@@ -316,7 +316,7 @@ fn glb_set_system_clk_pll(clk: u32, xtal_freq: u32) {
     // Note that 192Mhz is out of spec
     glb.clk_cfg0.modify(|_, w| unsafe {w
         .reg_pll_sel().bits(
-            match clk {
+            match target_core_clk {
                 48_000_000 => 0,
                 120_000_000 => 1,
                 160_000_000 => 2,
@@ -325,8 +325,6 @@ fn glb_set_system_clk_pll(clk: u32, xtal_freq: u32) {
             }
         )
     });
-
-    let target_core_clk = clk;
 
     // Keep bclk <= 80MHz
     if target_core_clk > 48_000_000 {
@@ -342,7 +340,7 @@ fn glb_set_system_clk_pll(clk: u32, xtal_freq: u32) {
     }
 
     hbn_set_root_clk_sel_pll();
-    system_core_clock_set(clk);
+    system_core_clock_set(target_core_clk);
     
     let mut delay = McycleDelay::new(system_core_clock_get());
     // This delay used to be 8 NOPS (1/4 us). (GLB_CLK_SET_DUMMY_WAIT) Might need to be replaced again.

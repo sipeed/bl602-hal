@@ -10,13 +10,44 @@ use embedded_hal::blocking::delay::{DelayUs};
 use crate::delay::*;
 pub struct Clocks {
     pll_xtal_freq: u32,
-    target_sys_ck: u32,
+    sysclk: u32,
     uart_clk_div: u8,
 }
 
 impl Clocks {
+    pub fn use_pll<F>(mut self, freq: F) -> Self
+    where
+        F: Into<Hertz>,
+    {
+        self.pll_xtal_freq = freq.into().0;
+        self
+    }
+
+    pub fn sys_clk<F>(mut self, freq: F) -> Self
+    where
+        F: Into<Hertz>,
+    {
+        self.sysclk = freq.into().0;
+        self
+    }
+
     pub const fn uart_clk(&self) -> Hertz {
         Hertz(160_000_000 / self.uart_clk_div as u32)
+    }
+
+    pub fn freeze(self) -> Clocks {
+        let glb = unsafe { &*pac::GLB::ptr() };
+        glb.clk_cfg2.write(|w| unsafe { w
+            .uart_clk_div().bits(self.uart_clk_div)
+            .uart_clk_en().set_bit()
+        });
+        glb_set_system_clk(self.pll_xtal_freq, self.sysclk);
+        let clocks = Clocks {
+            pll_xtal_freq: self.pll_xtal_freq,
+            sysclk: self.sysclk,
+            uart_clk_div: self.uart_clk_div,
+        };
+        clocks
     }
 }
 
@@ -37,6 +68,8 @@ impl Clocks {
 /// 50.20MHz as the frequency error is smallest.
 pub struct Strict {
     target_uart_clk: Option<NonZeroU32>,
+    pll_xtal_freq: Option<u32>,
+    sysclk: Option<u32>,
 }
 
 pub fn system_core_clock_set(value:u32){
@@ -358,6 +391,8 @@ impl Strict {
     pub fn new() -> Self {
         Strict {
             target_uart_clk: None,
+            pll_xtal_freq: None,
+            sysclk: None,
         }
     }
 
@@ -365,6 +400,18 @@ impl Strict {
     pub fn uart_clk(mut self, freq: impl Into<Hertz>) -> Self {
         let freq_hz = freq.into().0;
         self.target_uart_clk = NonZeroU32::new(freq_hz);
+        self
+    }
+
+    pub fn use_pll<F>(mut self, freq: impl Into<Hertz>) -> Self
+    {
+        self.pll_xtal_freq = Some(freq.into().0);
+        self
+    }
+
+    pub fn sys_clk<F>(mut self, freq: impl Into<Hertz>) -> Self
+    {
+        self.sysclk = Some(freq.into().0);
         self
     }
 
@@ -382,6 +429,14 @@ impl Strict {
     /// panics. 
     pub fn freeze(self, clk_cfg: &mut ClkCfg) -> Clocks {
         drop(clk_cfg); // logically use its ownership
+
+        // Default to not using the PLL, and selecting the internal RC oscillator if nothing selected
+        // TODO: verify clocks
+        let pll_xtal_freq = self.pll_xtal_freq.unwrap_or(0);
+        let sysclk = self.sysclk.unwrap_or(32_000_000);
+
+        // UART config
+        // TODO: use 160_000_000 only when sourced from PLL, otherwise sysclk
         let uart_clk = self.target_uart_clk.map(|f| f.get()).unwrap_or(40_000_000);
         let uart_clk_div = {
             let ans = 160_000_000 / uart_clk;
@@ -390,18 +445,11 @@ impl Strict {
             }
             ans as u8
         };
-        let glb = unsafe { &*pac::GLB::ptr() };
-        glb.clk_cfg2.write(|w| unsafe { w
-            .uart_clk_div().bits(uart_clk_div)
-            .uart_clk_en().set_bit()
-        });
 
-        let pll_xtal_freq = 40_000_000;
-        let target_sys_ck = 160_000_000;
 
         Clocks {
             pll_xtal_freq,
-            target_sys_ck,
+            sysclk,
             uart_clk_div,
         }
     }

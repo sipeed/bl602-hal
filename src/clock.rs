@@ -97,13 +97,13 @@ impl Strict {
         self
     }
 
-    pub fn use_pll<F>(mut self, freq: impl Into<Hertz>) -> Self
+    pub fn use_pll(mut self, freq: impl Into<Hertz>) -> Self
     {
         self.pll_xtal_freq = Some(freq.into().0);
         self
     }
 
-    pub fn sys_clk<F>(mut self, freq: impl Into<Hertz>) -> Self
+    pub fn sys_clk(mut self, freq: impl Into<Hertz>) -> Self
     {
         self.sysclk = Some(freq.into().0);
         self

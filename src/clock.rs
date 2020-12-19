@@ -80,6 +80,75 @@ pub struct Strict {
     sysclk: Option<u32>,
 }
 
+impl Strict {
+    /// Create a strict configurator
+    pub fn new() -> Self {
+        Strict {
+            target_uart_clk: None,
+            pll_xtal_freq: None,
+            sysclk: None,
+        }
+    }
+
+    /// Sets the desired frequency for the UART-CLK clock
+    pub fn uart_clk(mut self, freq: impl Into<Hertz>) -> Self {
+        let freq_hz = freq.into().0;
+        self.target_uart_clk = NonZeroU32::new(freq_hz);
+        self
+    }
+
+    pub fn use_pll<F>(mut self, freq: impl Into<Hertz>) -> Self
+    {
+        self.pll_xtal_freq = Some(freq.into().0);
+        self
+    }
+
+    pub fn sys_clk<F>(mut self, freq: impl Into<Hertz>) -> Self
+    {
+        self.sysclk = Some(freq.into().0);
+        self
+    }
+
+    /// Calculate and balance clock registers to configure into the given clock value.
+    /// If accurate value is not possible, this function panics. 
+    /// 
+    /// Be aware that Rust's panic is sometimes not obvious on embedded devices; if your
+    /// program didn't execute as expected, or the `pc` is pointing to somewhere weird
+    /// (usually `abort: j abort`), it's likely that this function have panicked. 
+    /// Breakpoint on `rust_begin_unwind` may help debugging.
+    ///
+    /// # Panics
+    ///
+    /// If strictly accurate value of given `ck_sys` etc. is not reachable, this function
+    /// panics. 
+    pub fn freeze(self, clk_cfg: &mut ClkCfg) -> Clocks {
+        drop(clk_cfg); // logically use its ownership
+
+        // Default to not using the PLL, and selecting the internal RC oscillator if nothing selected
+        // TODO: verify clocks
+        let pll_xtal_freq = self.pll_xtal_freq.unwrap_or(0);
+        let sysclk = self.sysclk.unwrap_or(32_000_000);
+
+        // UART config
+        // TODO: use 160_000_000 only when sourced from PLL, otherwise sysclk
+        let uart_clk = self.target_uart_clk.map(|f| f.get()).unwrap_or(40_000_000);
+        let uart_clk_div = {
+            let ans = 160_000_000 / uart_clk;
+            if !(ans >= 1 && ans <= 7) || ans * uart_clk != 160_000_000 {
+                panic!("unreachable uart_clk")
+            }
+            ans as u8
+        };
+
+
+        Clocks {
+            pll_xtal_freq,
+            sysclk,
+            uart_clk_div,
+        }
+    }
+}
+
 pub fn system_core_clock_set(value:u32){
     let hbn = unsafe { &*pac::HBN::ptr() };
     hbn.hbn_rsv2.write(|w| unsafe { w
@@ -392,73 +461,4 @@ fn glb_set_system_clk_pll(target_core_clk: u32, xtal_freq: u32) {
     glb.swrst_cfg2.write(|w| { w
         .pka_clk_sel().set_bit()
     });
-}
-
-impl Strict {
-    /// Create a strict configurator
-    pub fn new() -> Self {
-        Strict {
-            target_uart_clk: None,
-            pll_xtal_freq: None,
-            sysclk: None,
-        }
-    }
-
-    /// Sets the desired frequency for the UART-CLK clock
-    pub fn uart_clk(mut self, freq: impl Into<Hertz>) -> Self {
-        let freq_hz = freq.into().0;
-        self.target_uart_clk = NonZeroU32::new(freq_hz);
-        self
-    }
-
-    pub fn use_pll<F>(mut self, freq: impl Into<Hertz>) -> Self
-    {
-        self.pll_xtal_freq = Some(freq.into().0);
-        self
-    }
-
-    pub fn sys_clk<F>(mut self, freq: impl Into<Hertz>) -> Self
-    {
-        self.sysclk = Some(freq.into().0);
-        self
-    }
-
-    /// Calculate and balance clock registers to configure into the given clock value.
-    /// If accurate value is not possible, this function panics. 
-    /// 
-    /// Be aware that Rust's panic is sometimes not obvious on embedded devices; if your
-    /// program didn't execute as expected, or the `pc` is pointing to somewhere weird
-    /// (usually `abort: j abort`), it's likely that this function have panicked. 
-    /// Breakpoint on `rust_begin_unwind` may help debugging.
-    ///
-    /// # Panics
-    ///
-    /// If strictly accurate value of given `ck_sys` etc. is not reachable, this function
-    /// panics. 
-    pub fn freeze(self, clk_cfg: &mut ClkCfg) -> Clocks {
-        drop(clk_cfg); // logically use its ownership
-
-        // Default to not using the PLL, and selecting the internal RC oscillator if nothing selected
-        // TODO: verify clocks
-        let pll_xtal_freq = self.pll_xtal_freq.unwrap_or(0);
-        let sysclk = self.sysclk.unwrap_or(32_000_000);
-
-        // UART config
-        // TODO: use 160_000_000 only when sourced from PLL, otherwise sysclk
-        let uart_clk = self.target_uart_clk.map(|f| f.get()).unwrap_or(40_000_000);
-        let uart_clk_div = {
-            let ans = 160_000_000 / uart_clk;
-            if !(ans >= 1 && ans <= 7) || ans * uart_clk != 160_000_000 {
-                panic!("unreachable uart_clk")
-            }
-            ans as u8
-        };
-
-
-        Clocks {
-            pll_xtal_freq,
-            sysclk,
-            uart_clk_div,
-        }
-    }
 }

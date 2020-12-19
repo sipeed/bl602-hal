@@ -149,7 +149,7 @@ impl Strict {
     }
 }
 
-pub fn system_core_clock_set(value:u32){
+fn system_core_clock_set(value:u32){
     let hbn = unsafe { &*pac::HBN::ptr() };
     hbn.hbn_rsv2.write(|w| unsafe { w
         .bits(value)

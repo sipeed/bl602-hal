@@ -46,7 +46,7 @@ impl Clocks {
     pub fn freeze(self) -> Clocks {
         let glb = unsafe { &*pac::GLB::ptr() };
         glb.clk_cfg2.write(|w| unsafe { w
-            .uart_clk_div().bits(self.uart_clk_div)
+            .uart_clk_div().bits(self.uart_clk_div-1)
             .uart_clk_en().set_bit()
         });
         glb_set_system_clk(self.pll_xtal_freq, self.sysclk);

@@ -41,7 +41,7 @@ pub mod uart_sig {
 
 
 macro_rules! impl_uart_sig {
-    ($UartSigi: ident, $doc1: expr, $UartMuxi: ident, $doc2: expr) => {
+    ($UartSigi: ident, $doc1: expr, $sigi:ident, $UartMuxi: ident, $doc2: expr) => {
 
     #[doc = $doc1]
     pub struct $UartSigi;
@@ -86,23 +86,25 @@ macro_rules! impl_uart_sig {
         }
         #[inline]
         fn into_uart_mode<T>(self, mode: u8) -> $UartMuxi<T> {
+            paste::paste! {
             let glb = unsafe { &*pac::GLB::ptr() };
-            glb.uart_sig_sel_0.write(|w| unsafe { w
-                .uart_sig_5_sel().bits(mode)
+            glb.uart_sig_sel_0.modify(|_r, w| unsafe { w
+                .[<uart_ $sigi _sel>]().bits(mode)
             });
+            }
             $UartMuxi { _mode: PhantomData }
         }
     }
     };
 }    
-    impl_uart_sig!(UartSig0, "Uart signal 0 (type state)", UartMux0, "Uart multiplexer peripherals for signal 0");
-    impl_uart_sig!(UartSig1, "Uart signal 1 (type state)", UartMux1, "Uart multiplexer peripherals for signal 1");
-    impl_uart_sig!(UartSig2, "Uart signal 2 (type state)", UartMux2, "Uart multiplexer peripherals for signal 2");
-    impl_uart_sig!(UartSig3, "Uart signal 3 (type state)", UartMux3, "Uart multiplexer peripherals for signal 3");
-    impl_uart_sig!(UartSig4, "Uart signal 4 (type state)", UartMux4, "Uart multiplexer peripherals for signal 4");
-    impl_uart_sig!(UartSig5, "Uart signal 5 (type state)", UartMux5, "Uart multiplexer peripherals for signal 5");
-    impl_uart_sig!(UartSig6, "Uart signal 6 (type state)", UartMux6, "Uart multiplexer peripherals for signal 6");
-    impl_uart_sig!(UartSig7, "Uart signal 7 (type state)", UartMux7, "Uart multiplexer peripherals for signal 7");
+    impl_uart_sig!(UartSig0, "Uart signal 0 (type state)", sig_0, UartMux0, "Uart multiplexer peripherals for signal 0");
+    impl_uart_sig!(UartSig1, "Uart signal 1 (type state)", sig_1, UartMux1, "Uart multiplexer peripherals for signal 1");
+    impl_uart_sig!(UartSig2, "Uart signal 2 (type state)", sig_2, UartMux2, "Uart multiplexer peripherals for signal 2");
+    impl_uart_sig!(UartSig3, "Uart signal 3 (type state)", sig_3, UartMux3, "Uart multiplexer peripherals for signal 3");
+    impl_uart_sig!(UartSig4, "Uart signal 4 (type state)", sig_4, UartMux4, "Uart multiplexer peripherals for signal 4");
+    impl_uart_sig!(UartSig5, "Uart signal 5 (type state)", sig_5, UartMux5, "Uart multiplexer peripherals for signal 5");
+    impl_uart_sig!(UartSig6, "Uart signal 6 (type state)", sig_6, UartMux6, "Uart multiplexer peripherals for signal 6");
+    impl_uart_sig!(UartSig7, "Uart signal 7 (type state)", sig_7, UartMux7, "Uart multiplexer peripherals for signal 7");
 }
 
 /// Clock configurator registers

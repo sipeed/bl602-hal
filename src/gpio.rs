@@ -255,11 +255,7 @@ $(
                 .[<reg_ $gpio_i _smt>]().clear_bit()
             });
             // If we're an input clear the Output Enable bit as well, else set it.
-            if ie {
-                glb.gpio_cfgctl34.modify(|_, w| w.[<reg_ $gpio_i _oe>]().clear_bit());
-            } else {
-                glb.gpio_cfgctl34.modify(|_, w| w.[<reg_ $gpio_i _oe>]().set_bit());
-            }
+            glb.gpio_cfgctl34.modify(|_, w| w.[<reg_ $gpio_i _oe>]().bit(!ie));
         }
             $Pini { _mode: PhantomData }
         }

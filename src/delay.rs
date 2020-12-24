@@ -13,7 +13,7 @@ pub struct McycleDelay {
 }
 
 impl McycleDelay {
-    /// Constructs the delay provider based on provided core clock frequency
+    /// Constructs the delay provider based on core clock frequency `freq`
     pub fn new(freq: u32) -> Self {
         Self {
             /// System clock frequency, used to convert clock cycles
@@ -22,19 +22,19 @@ impl McycleDelay {
         }
     }
 
-    /// retrieve the cycle count for the current HART
+    /// Retrieves the cycle count for the current HART
     #[inline]
     pub fn get_cycle_count() -> u64 {
         riscv::register::mcycle::read64()
     }
 
-    /// return the number of elapsed cycles since provided cycle_count
+    /// Returns the number of elapsed cycles since `previous_cycle_count`
     #[inline]
     pub fn cycles_since(previous_cycle_count: u64) -> u64 {
         riscv::register::mcycle::read64().wrapping_sub(previous_cycle_count)
     }
 
-    /// perform a busy-wait loop until the number of cycles requested has elapsed
+    /// Performs a busy-wait loop until the number of cycles `cycle_count` has elapsed
     #[inline]
     pub fn delay_cycles(cycle_count: u64) {
         let start_cycle_count = McycleDelay::get_cycle_count();
@@ -44,7 +44,7 @@ impl McycleDelay {
 
 impl DelayUs<u64> for McycleDelay {
     type Error = Infallible;
-    // perform a busy-wait loop until the number of microseconds requested has elapsed
+    /// Performs a busy-wait loop until the number of microseconds `us` has elapsed
     #[inline]
     fn try_delay_us(&mut self, us: u64) -> Result<(), Infallible> {
         McycleDelay::delay_cycles(
@@ -56,7 +56,7 @@ impl DelayUs<u64> for McycleDelay {
 
 impl DelayMs<u64> for McycleDelay {
     type Error = Infallible;
-    // perform a busy-wait loop until the number of milliseconds requested has elapsed
+    /// Performs a busy-wait loop until the number of milliseconds `ms` has elapsed
     #[inline]
     fn try_delay_ms(&mut self, ms: u64) -> Result<(), Infallible> {
         McycleDelay::delay_cycles(

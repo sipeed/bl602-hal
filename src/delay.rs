@@ -1,13 +1,12 @@
 //! Delays
 
-use embedded_hal::timer::CountDown;
-use crate::clock::Clocks;
 use embedded_hal::blocking::delay::{DelayUs, DelayMs};
 use core::convert::Infallible;
 
 /// Use RISCV machine-mode cycle counter (`mcycle`) as a delay provider.
+///
 /// This can be used for high resolution delays for device initialization,
-/// bit-banging with interrupts disabled, etc
+/// bit-banging protocols, etc
 #[derive(Copy, Clone)]
 pub struct McycleDelay {
     core_frequency: u32

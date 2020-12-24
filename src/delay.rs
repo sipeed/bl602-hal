@@ -5,15 +5,14 @@ use crate::clock::Clocks;
 use embedded_hal::blocking::delay::{DelayUs, DelayMs};
 use core::convert::Infallible;
 
-/// Machine mode cycle counter (`mcycle`) as a delay provider
+/// Use RISCV machine-mode cycle counter (`mcycle`) as a delay provider.
+/// This can be used for high resolution delays for device initialization,
+/// bit-banging with interrupts disabled, etc
 #[derive(Copy, Clone)]
 pub struct McycleDelay {
     core_frequency: u32
 }
 
-/// Use RISCV machine-mode cycle counter (`mcycle`) as a delay provider.
-/// This can be used for high resolution delays for device initialization,
-/// bit-banging with interrupts disabled, etc
 impl McycleDelay {
     /// Constructs the delay provider based on provided core clock frequency
     pub fn new(freq: u32) -> Self {

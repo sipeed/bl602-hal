@@ -3,13 +3,13 @@
 use embedded_hal::timer::CountDown;
 use crate::clock::Clocks;
 use embedded_hal::blocking::delay::{DelayUs, DelayMs};
+use core::convert::Infallible;
+
 /// Machine mode cycle counter (`mcycle`) as a delay provider
 #[derive(Copy, Clone)]
 pub struct McycleDelay {
     core_frequency: u32
 }
-#[derive(Debug, Clone)]
-pub struct DelayError;
 
 /// Use RISCV machine-mode cycle counter (`mcycle`) as a delay provider.
 /// This can be used for high resolution delays for device initialization,
@@ -45,10 +45,10 @@ impl McycleDelay {
 }
 
 impl DelayUs<u64> for McycleDelay {
-    type Error = DelayError;
+    type Error = Infallible;
     // perform a busy-wait loop until the number of microseconds requested has elapsed
     #[inline]
-    fn try_delay_us(&mut self, us: u64) -> Result<(), <Self as DelayUs<u64>>::Error>  {
+    fn try_delay_us(&mut self, us: u64) -> Result<(), Infallible> {
         McycleDelay::delay_cycles(
             (us * (self.core_frequency as u64)) / 1_000_000
         );
@@ -57,10 +57,10 @@ impl DelayUs<u64> for McycleDelay {
 }
 
 impl DelayMs<u64> for McycleDelay {
-    type Error = DelayError;
+    type Error = Infallible;
     // perform a busy-wait loop until the number of milliseconds requested has elapsed
     #[inline]
-    fn try_delay_ms(&mut self, ms: u64) -> Result<(), <Self as DelayMs<u64>>::Error>  {
+    fn try_delay_ms(&mut self, ms: u64) -> Result<(), Infallible> {
         McycleDelay::delay_cycles(
             (ms * (self.core_frequency as u64)) / 1000
         );

@@ -30,6 +30,13 @@ impl McycleDelay {
     pub fn cycles_since(cycle_count: u64) -> u64 {
         riscv::register::mcycle::read64().wrapping_sub(cycle_count)
     }
+
+    /// perform a busy-wait loop until the number of cycles requested has elapsed
+    #[inline]
+    pub fn delay_cycles(cycle_count: u64) {
+        let start_cycle_count = McycleDelay::get_cycle_count();
+        while McycleDelay::cycles_since(start_cycle_count) <= cycle_count { }
+    }
 }
 
 impl DelayUs<u64> for McycleDelay {

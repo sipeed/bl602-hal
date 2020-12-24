@@ -19,12 +19,16 @@ impl McycleDelay {
         }
     }
 
-    pub fn get_time() -> u64 {
+    /// retrieve the cycle count for the current HART
+    #[inline]
+    pub fn get_cycle_count() -> u64 {
         riscv::register::mcycle::read64()
     }
 
-    pub fn elapsed_us(time: u64) -> u64 {
-        riscv::register::mcycle::read64().wrapping_sub(time)
+    /// return the number of elapsed cycles since provided cycle_count
+    #[inline]
+    pub fn cycles_since(cycle_count: u64) -> u64 {
+        riscv::register::mcycle::read64().wrapping_sub(cycle_count)
     }
 }
 

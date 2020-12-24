@@ -11,10 +11,15 @@ pub struct McycleDelay {
 #[derive(Debug, Clone)]
 pub struct DelayError;
 
+/// Use RISCV machine-mode cycle counter (`mcycle`) as a delay provider.
+/// This can be used for high resolution delays for device initialization,
+/// bit-banging with interrupts disabled, etc
 impl McycleDelay {
     /// Constructs the delay provider based on provided core clock frequency
     pub fn new(freq: u32) -> Self {
         Self {
+            /// System clock frequency, used to convert clock cycles
+            /// into real-world time values
             core_frequency: freq
         }
     }
@@ -41,20 +46,24 @@ impl McycleDelay {
 
 impl DelayUs<u64> for McycleDelay {
     type Error = DelayError;
+    // perform a busy-wait loop until the number of microseconds requested has elapsed
+    #[inline]
     fn try_delay_us(&mut self, us: u64) -> Result<(), <Self as DelayUs<u64>>::Error>  {
-        let t0 = riscv::register::mcycle::read64();
-        let clocks = (us * (self.core_frequency as u64)) / 1_000_000;
-        while riscv::register::mcycle::read64().wrapping_sub(t0) <= clocks { }
+        McycleDelay::delay_cycles(
+            (us * (self.core_frequency as u64)) / 1_000_000
+        );
         Ok(())
     }
 }
 
 impl DelayMs<u64> for McycleDelay {
     type Error = DelayError;
-    fn try_delay_ms(&mut self, us: u64) -> Result<(), <Self as DelayMs<u64>>::Error>  {
-        let t0 = riscv::register::mcycle::read64();
-        let clocks = (us * (self.core_frequency as u64)) / 1000;
-        while riscv::register::mcycle::read64().wrapping_sub(t0) <= clocks { }
+    // perform a busy-wait loop until the number of milliseconds requested has elapsed
+    #[inline]
+    fn try_delay_ms(&mut self, ms: u64) -> Result<(), <Self as DelayMs<u64>>::Error>  {
+        McycleDelay::delay_cycles(
+            (ms * (self.core_frequency as u64)) / 1000
+        );
         Ok(())
     }
 }

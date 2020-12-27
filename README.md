@@ -2,6 +2,12 @@
 
 Hardware Abstract Layer for BL602 RISC-V WiFi SoC in embedded Rust.
 
+## Minimum Supported Rust Version
+
+The minimum supported Rust version (MSRV) for this project is Rust **v1.42.0**. The
+project might build on earlier versions, but this is the earliest version that
+is expected to work.
+
 ## Contributing
 
 We welcome the community to contribute to this project. Please fire an issue or pull request

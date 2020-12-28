@@ -1,6 +1,24 @@
 //! SoC clock configuration
 // 其实和gpio两个模块同属GLB外设
 // 时钟控制器
+// The clocking in this chip is split into several peripheral sections oriented around low power modes
+//
+// Here is a quick overview of the peripheral sections as relates to those modes
+//
+// The GLB (global register) portion of the chip controls most clock enable/division circuits
+//   as well as the GPIO
+// The AON (always on) section is parts of the SOC that are active in all but the deepest
+//   hibernate mode (HBN3). This section controls power to external high frequency crystal
+// The PDS (power-down state, sleep) is the smallest level of power saving.
+//   It always keeps CORE SRAM and timer power enabled.
+//   Power to CPU, Wireless PHY+MAC, and digital/analog pins is optionally turned off at different pre-set levels
+//   Peripherals that relate to clocking in this module: PLL
+// The HBN (hibernate, deep sleep) section is the largest level of power saving.
+//   It always turns off CPU, Wireless PHY+MAC, CORE SRAM and timers, and optionally sections or all of AON
+//   It contains the root clock source selection (sysclk/flck)
+// The L1C (level 1 cache) section maps tightly-coupled ram/cache SRAM in front of slower buses
+//   (ROM, flash). It contains configuration for internal ROM access latency
+
 use crate::pac;
 use crate::gpio::ClkCfg;
 use core::{num::NonZeroU32, unimplemented};

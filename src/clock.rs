@@ -26,6 +26,10 @@ use embedded_time::rate::Hertz;
 use crate::pac::Peripherals;
 use embedded_hal::blocking::delay::{DelayUs};
 use crate::delay::*;
+
+/// Internal high-speed RC oscillator frequency
+pub const RC32M: u32 = 32_000_000;
+
 pub struct Clocks {
     pll_xtal_freq: u32,
     sysclk: u32,
@@ -36,7 +40,7 @@ impl Clocks {
     pub fn new() -> Self {
         Clocks {
             pll_xtal_freq: 0,
-            sysclk: 32_000_000,
+            sysclk: RC32M,
             uart_clk_div: 0,
         }
     }
@@ -145,7 +149,7 @@ impl Strict {
         // Default to not using the PLL, and selecting the internal RC oscillator if nothing selected
         // TODO: verify clocks
         let pll_xtal_freq = self.pll_xtal_freq.unwrap_or(0);
-        let sysclk = self.sysclk.unwrap_or(32_000_000);
+        let sysclk = self.sysclk.unwrap_or(RC32M);
 
         // UART config
         // TODO: use 160_000_000 only when sourced from PLL, otherwise sysclk
@@ -395,7 +399,7 @@ fn glb_set_system_clk_rc32(){
     });
 
     // Update sysclock
-    system_core_clock_set(32_000_000);
+    system_core_clock_set(RC32M);
 
     // Select PKA clock from hclk
     glb.swrst_cfg2.modify(|_, w| { w
@@ -413,7 +417,7 @@ pub fn glb_set_system_clk(xtal_freq: u32, sysclk_freq: u32) {
     // Ensure clock is running off internal RC oscillator before changing anything else
     glb_set_system_clk_rc32();
     // if target clock is 32Mhz we don't have to do any more
-    if sysclk_freq == 32_000_000{
+    if sysclk_freq == RC32M{
         return
     } else {
         // Configure XTAL, PLL and select it as clock source for fclk

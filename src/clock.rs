@@ -45,7 +45,7 @@ impl Clocks {
 
     pub fn freeze(self) -> Clocks {
         let glb = unsafe { &*pac::GLB::ptr() };
-        glb.clk_cfg2.write(|w| unsafe { w
+        glb.clk_cfg2.modify(|_, w| unsafe { w
             .uart_clk_div().bits(self.uart_clk_div-1)
             .uart_clk_en().set_bit()
         });
@@ -458,7 +458,7 @@ fn glb_set_system_clk_pll(target_core_clk: u32, xtal_freq: u32) {
 
     // use 120Mhz PLL tap for PKA clock since we're using PLL
     // NOTE: This isn't documented in the datasheet!
-    glb.swrst_cfg2.write(|w| { w
+    glb.swrst_cfg2.modify(|_, w| { w
         .pka_clk_sel().set_bit()
     });
 }

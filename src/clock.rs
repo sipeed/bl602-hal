@@ -66,8 +66,7 @@ impl Clocks {
     }
 
     pub fn freeze(self) -> Clocks {
-        let glb = unsafe { &*pac::GLB::ptr() };
-        glb.clk_cfg2.write(|w| unsafe { w
+        unsafe { &*pac::GLB::ptr() }.clk_cfg2.write(|w| unsafe { w
             .uart_clk_div().bits(self.uart_clk_div-1)
             .uart_clk_en().set_bit()
         });
@@ -172,15 +171,13 @@ impl Strict {
 }
 
 fn system_core_clock_set(value:u32){
-    let hbn = unsafe { &*pac::HBN::ptr() };
-    hbn.hbn_rsv2.write(|w| unsafe { w
+    unsafe { &*pac::HBN::ptr() }.hbn_rsv2.write(|w| unsafe { w
         .bits(value)
     })
 }
 
 pub fn system_core_clock_get() -> u32 {
-    let hbn = unsafe { &*pac::HBN::ptr() };
-    hbn.hbn_rsv2.read().bits()
+    unsafe { &*pac::HBN::ptr() }.hbn_rsv2.read().bits()
 }
 
 fn glb_set_system_clk_div(hclkdiv:u8, bclkdiv:u8){
@@ -189,8 +186,7 @@ fn glb_set_system_clk_div(hclkdiv:u8, bclkdiv:u8){
     // glb_reg_bclk_dis isn't in the SVD file, so it isn't generated through svd2rust 
     // It's only used here.
     let glb_reg_bclk_dis = 0x40000FFC as * mut u32;
-    let glb = unsafe { &*pac::GLB::ptr() };
-    glb.clk_cfg0.modify(|_, w| unsafe { w
+    unsafe { &*pac::GLB::ptr() }.clk_cfg0.modify(|_, w| unsafe { w
         .reg_hclk_div().bits(hclkdiv)
         .reg_bclk_div().bits(bclkdiv)
     });
@@ -203,7 +199,7 @@ fn glb_set_system_clk_div(hclkdiv:u8, bclkdiv:u8){
     // This delay used to be 8 NOPS (1/4 us). Might need to be replaced again.
     delay.try_delay_us(1).unwrap();
 
-    glb.clk_cfg0.modify(|_, w| { w
+    unsafe { &*pac::GLB::ptr() }.clk_cfg0.modify(|_, w| { w
         .reg_hclk_en().set_bit()
         .reg_bclk_en().set_bit()
     });
@@ -212,21 +208,19 @@ fn glb_set_system_clk_div(hclkdiv:u8, bclkdiv:u8){
 
 
 fn pds_select_xtal_as_pll_ref(){
-    let pds = unsafe { &*pac::PDS::ptr() };
-    pds.clkpll_top_ctrl.modify(|_, w| {w
+    unsafe { &*pac::PDS::ptr() }.clkpll_top_ctrl.modify(|_, w| {w
         .clkpll_refclk_sel().set_bit()
         .clkpll_xtal_rc32m_sel().clear_bit()
     });
 }
 
 fn pds_power_off_pll(){
-    let pds = unsafe { &*pac::PDS::ptr() };
-    pds.pu_rst_clkpll.modify(|_, w| {w
+    unsafe { &*pac::PDS::ptr() }.pu_rst_clkpll.modify(|_, w| {w
         .pu_clkpll_sfreg().clear_bit()
         .pu_clkpll().clear_bit()
     });
 
-    pds.pu_rst_clkpll.modify(|_, w| {w
+    unsafe { &*pac::PDS::ptr() }.pu_rst_clkpll.modify(|_, w| {w
         .clkpll_pu_cp().clear_bit()
         .clkpll_pu_pfd().clear_bit()
         .clkpll_pu_fbdv().clear_bit()
@@ -341,8 +335,7 @@ fn pds_power_on_pll(freq: u32) {
 }
 
 fn aon_power_on_xtal() {
-    let aon = unsafe { &*pac::AON::ptr() };
-    aon.rf_top_aon.modify(|_, w| { w
+    unsafe { &*pac::AON::ptr() }.rf_top_aon.modify(|_, w| { w
         .pu_xtal_aon().set_bit()
         .pu_xtal_buf_aon().set_bit()
     });
@@ -350,7 +343,7 @@ fn aon_power_on_xtal() {
     let mut delaysrc = McycleDelay::new(system_core_clock_get());
     let mut timeout:u32 = 0;
     delaysrc.try_delay_us(10).unwrap();
-    while aon.tsen.read().xtal_rdy().bit_is_clear() && timeout < 120{
+    while unsafe { &*pac::AON::ptr() }.tsen.read().xtal_rdy().bit_is_clear() && timeout < 120{
         delaysrc.try_delay_us(10).unwrap();
         timeout+=1;
     }
@@ -358,8 +351,7 @@ fn aon_power_on_xtal() {
 }
 
 fn hbn_set_root_clk_sel_pll(){
-    let hbn = unsafe { &*pac::HBN::ptr() };
-    hbn.hbn_glb.modify(|r,w| unsafe { w
+    unsafe { &*pac::HBN::ptr() }.hbn_glb.modify(|r,w| unsafe { w
         .hbn_root_clk_sel().bits(
             r.hbn_root_clk_sel().bits() as u8 | 0b10u8
         )
@@ -367,15 +359,13 @@ fn hbn_set_root_clk_sel_pll(){
 }
 
 fn hbn_set_root_clk_sel_rc32(){
-    let hbn = unsafe { &*pac::HBN::ptr() };
-    hbn.hbn_glb.modify(|_, w| unsafe { w
+    unsafe { &*pac::HBN::ptr() }.hbn_glb.modify(|_, w| unsafe { w
         .hbn_root_clk_sel().bits(0b00u8)
     });
 }
 
 fn pds_enable_pll_all_clks(){
-    let pds = unsafe { &*pac::PDS::ptr() };
-    pds.clkpll_output_en.modify(|r, w| unsafe {w
+    unsafe { &*pac::PDS::ptr() }.clkpll_output_en.modify(|r, w| unsafe {w
         .bits(r.bits() | 0x1FF)
     });
 }
@@ -383,8 +373,7 @@ fn pds_enable_pll_all_clks(){
 /// Set the system clock to use the internal 32Mhz RC oscillator
 fn glb_set_system_clk_rc32(){
     // reg_bclk_en = reg_hclk_en = reg_fclk_en = 1, cannot be zero
-    let glb = unsafe { &*pac::GLB::ptr() };
-    glb.clk_cfg0.modify(|_, w| { w
+    unsafe { &*pac::GLB::ptr() }.clk_cfg0.modify(|_, w| { w
         .reg_bclk_en().set_bit()
         .reg_hclk_en().set_bit()
         .reg_fclk_en().set_bit()
@@ -393,7 +382,7 @@ fn glb_set_system_clk_rc32(){
     // Before config XTAL and PLL ,make sure root clk is from RC32M
     hbn_set_root_clk_sel_rc32();
 
-    glb.clk_cfg0.modify(|_, w| unsafe { w
+    unsafe { &*pac::GLB::ptr() }.clk_cfg0.modify(|_, w| unsafe { w
         .reg_hclk_div().bits(0)
         .reg_bclk_div().bits(0)
     });
@@ -402,7 +391,7 @@ fn glb_set_system_clk_rc32(){
     system_core_clock_set(RC32M);
 
     // Select PKA clock from hclk
-    glb.swrst_cfg2.modify(|_, w| { w
+    unsafe { &*pac::GLB::ptr() }.swrst_cfg2.modify(|_, w| { w
         .pka_clk_sel().clear_bit()
     });
 }
@@ -426,7 +415,6 @@ pub fn glb_set_system_clk(xtal_freq: u32, sysclk_freq: u32) {
 }
 
 fn glb_set_system_clk_pll(target_core_clk: u32, xtal_freq: u32) {
-    let glb = unsafe { &*pac::GLB::ptr() };
     // Power up the external crystal before we start up the PLL
     aon_power_on_xtal();
 
@@ -439,14 +427,14 @@ fn glb_set_system_clk_pll(target_core_clk: u32, xtal_freq: u32) {
     pds_enable_pll_all_clks();
     
     // Enable PLL
-    glb.clk_cfg0.modify(|_, w| {w
+    unsafe { &*pac::GLB::ptr() }.clk_cfg0.modify(|_, w| {w
         .reg_pll_en().set_bit()
     });
 
     // select which pll output clock to use before 
     // selecting root clock via HBN_Set_ROOT_CLK_Sel
     // Note that 192Mhz is out of spec
-    glb.clk_cfg0.modify(|_, w| unsafe {w
+    unsafe { &*pac::GLB::ptr() }.clk_cfg0.modify(|_, w| unsafe {w
         .reg_pll_sel().bits(
             match target_core_clk {
                 48_000_000 => 0,
@@ -465,8 +453,7 @@ fn glb_set_system_clk_pll(target_core_clk: u32, xtal_freq: u32) {
 
     // For frequencies above 120Mhz we need 2 clocks to access internal rom
     if target_core_clk > 120_000_000 {
-        let l1c = unsafe { &*pac::L1C::ptr() };
-        l1c.l1c_config.modify(|_, w| {w
+        unsafe { &*pac::L1C::ptr() }.l1c_config.modify(|_, w| {w
             .irom_2t_access().set_bit()
         });
     }
@@ -480,7 +467,7 @@ fn glb_set_system_clk_pll(target_core_clk: u32, xtal_freq: u32) {
 
     // use 120Mhz PLL tap for PKA clock since we're using PLL
     // NOTE: This isn't documented in the datasheet!
-    glb.swrst_cfg2.modify(|_, w| { w
+    unsafe { &*pac::GLB::ptr() }.swrst_cfg2.modify(|_, w| { w
         .pka_clk_sel().set_bit()
     });
 }

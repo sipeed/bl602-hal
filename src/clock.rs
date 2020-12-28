@@ -63,7 +63,7 @@ impl Clocks {
 
     pub fn freeze(self) -> Clocks {
         let glb = unsafe { &*pac::GLB::ptr() };
-        glb.clk_cfg2.modify(|_, w| unsafe { w
+        glb.clk_cfg2.write(|w| unsafe { w
             .uart_clk_div().bits(self.uart_clk_div-1)
             .uart_clk_en().set_bit()
         });
@@ -186,7 +186,7 @@ fn glb_set_system_clk_div(hclkdiv:u8, bclkdiv:u8){
     // It's only used here.
     let glb_reg_bclk_dis = 0x40000FFC as * mut u32;
     let glb = unsafe { &*pac::GLB::ptr() };
-    glb.clk_cfg0.modify(|_,w| unsafe { w
+    glb.clk_cfg0.modify(|_, w| unsafe { w
         .reg_hclk_div().bits(hclkdiv)
         .reg_bclk_div().bits(bclkdiv)
     });
@@ -199,7 +199,7 @@ fn glb_set_system_clk_div(hclkdiv:u8, bclkdiv:u8){
     // This delay used to be 8 NOPS (1/4 us). Might need to be replaced again.
     delay.try_delay_us(1).unwrap();
 
-    glb.clk_cfg0.modify(|_,w| { w
+    glb.clk_cfg0.modify(|_, w| { w
         .reg_hclk_en().set_bit()
         .reg_bclk_en().set_bit()
     });
@@ -209,7 +209,7 @@ fn glb_set_system_clk_div(hclkdiv:u8, bclkdiv:u8){
 
 fn pds_select_xtal_as_pll_ref(){
     let pds = unsafe { &*pac::PDS::ptr() };
-    pds.clkpll_top_ctrl.modify(|_r,w| {w
+    pds.clkpll_top_ctrl.modify(|_, w| {w
         .clkpll_refclk_sel().set_bit()
         .clkpll_xtal_rc32m_sel().clear_bit()
     });
@@ -217,12 +217,12 @@ fn pds_select_xtal_as_pll_ref(){
 
 fn pds_power_off_pll(){
     let pds = unsafe { &*pac::PDS::ptr() };
-    pds.pu_rst_clkpll.modify(|_r, w| {w
+    pds.pu_rst_clkpll.modify(|_, w| {w
         .pu_clkpll_sfreg().clear_bit()
         .pu_clkpll().clear_bit()
     });
 
-    pds.pu_rst_clkpll.modify(|_r, w| {w
+    pds.pu_rst_clkpll.modify(|_, w| {w
         .clkpll_pu_cp().clear_bit()
         .clkpll_pu_pfd().clear_bit()
         .clkpll_pu_fbdv().clear_bit()
@@ -243,24 +243,24 @@ fn pds_power_on_pll(freq: u32) {
     // PLL param config
     //TODO: document + research this a bit more to work out if we can run at other frequecies
     if freq == 26_000_000 {
-        pds.clkpll_cp.modify(|_r, w| unsafe {w
+        pds.clkpll_cp.modify(|_, w| unsafe {w
             .clkpll_icp_1u().bits(1)
             .clkpll_icp_5u().bits(0)
             .clkpll_int_frac_sw().set_bit()
         });
-        pds.clkpll_rz.modify(|_r, w| unsafe {w
+        pds.clkpll_rz.modify(|_, w| unsafe {w
             .clkpll_c3().bits(2)
             .clkpll_cz().bits(2)
             .clkpll_rz().bits(5)
             .clkpll_r4_short().clear_bit()
         });
     } else {
-        pds.clkpll_cp.modify(|_r, w| unsafe {w
+        pds.clkpll_cp.modify(|_, w| unsafe {w
             .clkpll_icp_1u().bits(0)
             .clkpll_icp_5u().bits(2)
             .clkpll_int_frac_sw().clear_bit()
         });
-        pds.clkpll_rz.modify(|_r, w| unsafe {w
+        pds.clkpll_rz.modify(|_, w| unsafe {w
             .clkpll_c3().bits(3)
             .clkpll_cz().bits(1)
             .clkpll_rz().bits(1)
@@ -268,12 +268,12 @@ fn pds_power_on_pll(freq: u32) {
         });
     }
 
-    pds.clkpll_top_ctrl.modify(|_r, w| unsafe {w
+    pds.clkpll_top_ctrl.modify(|_, w| unsafe {w
         .clkpll_postdiv().bits(0x14)
         .clkpll_refdiv_ratio().bits(2)
     });
 
-    pds.clkpll_sdm.modify(|_r, w| unsafe {w
+    pds.clkpll_sdm.modify(|_, w| unsafe {w
         .clkpll_sdmin().bits(
             match freq {
                 24_000_000 =>  0x50_0000,
@@ -286,7 +286,7 @@ fn pds_power_on_pll(freq: u32) {
         )
     });
 
-    pds.clkpll_fbdv.modify(|_r, w| unsafe {w
+    pds.clkpll_fbdv.modify(|_, w| unsafe {w
         .clkpll_sel_fb_clk().bits(1)
         .clkpll_sel_sample_clk().bits(1)
     });
@@ -294,17 +294,17 @@ fn pds_power_on_pll(freq: u32) {
     /*************************/
     /* PLL power up sequence */
     /*************************/
-    pds.pu_rst_clkpll.modify(|_r, w| {w
+    pds.pu_rst_clkpll.modify(|_, w| {w
         .pu_clkpll_sfreg().set_bit()
     });
 
     delay.try_delay_us(5).unwrap();
 
-    pds.pu_rst_clkpll.modify(|_r, w| {w
+    pds.pu_rst_clkpll.modify(|_, w| {w
         .pu_clkpll().set_bit()
     });
 
-    pds.pu_rst_clkpll.modify(|_r, w| {w
+    pds.pu_rst_clkpll.modify(|_, w| {w
         .clkpll_pu_cp().set_bit()
         .clkpll_pu_pfd().set_bit()
         .clkpll_pu_fbdv().set_bit()
@@ -313,25 +313,25 @@ fn pds_power_on_pll(freq: u32) {
 
     delay.try_delay_us(5).unwrap();
 
-    pds.pu_rst_clkpll.modify(|_r, w| {w
+    pds.pu_rst_clkpll.modify(|_, w| {w
         .clkpll_sdm_reset().set_bit()
     });
 
     delay.try_delay_us(1).unwrap();
 
-    pds.pu_rst_clkpll.modify(|_r, w| {w
+    pds.pu_rst_clkpll.modify(|_, w| {w
         .clkpll_reset_fbdv().set_bit()
     });
 
     delay.try_delay_us(2).unwrap();
 
-    pds.pu_rst_clkpll.modify(|_r, w| {w
+    pds.pu_rst_clkpll.modify(|_, w| {w
         .clkpll_reset_fbdv().clear_bit()
     });
 
     delay.try_delay_us(1).unwrap();
 
-    pds.pu_rst_clkpll.modify(|_r, w| {w
+    pds.pu_rst_clkpll.modify(|_, w| {w
         .clkpll_sdm_reset().clear_bit()
     });
 }
@@ -364,7 +364,7 @@ fn hbn_set_root_clk_sel_pll(){
 
 fn hbn_set_root_clk_sel_rc32(){
     let hbn = unsafe { &*pac::HBN::ptr() };
-    hbn.hbn_glb.modify(|r,w| unsafe { w
+    hbn.hbn_glb.modify(|_, w| unsafe { w
         .hbn_root_clk_sel().bits(0b00u8)
     });
 }
@@ -389,7 +389,7 @@ fn glb_set_system_clk_rc32(){
     // Before config XTAL and PLL ,make sure root clk is from RC32M
     hbn_set_root_clk_sel_rc32();
 
-    glb.clk_cfg0.modify(|_,w| unsafe { w
+    glb.clk_cfg0.modify(|_, w| unsafe { w
         .reg_hclk_div().bits(0)
         .reg_bclk_div().bits(0)
     });
@@ -398,7 +398,7 @@ fn glb_set_system_clk_rc32(){
     system_core_clock_set(32_000_000);
 
     // Select PKA clock from hclk
-    glb.swrst_cfg2.modify(|_,w| { w
+    glb.swrst_cfg2.modify(|_, w| { w
         .pka_clk_sel().clear_bit()
     });
 }
@@ -462,7 +462,7 @@ fn glb_set_system_clk_pll(target_core_clk: u32, xtal_freq: u32) {
     // For frequencies above 120Mhz we need 2 clocks to access internal rom
     if target_core_clk > 120_000_000 {
         let l1c = unsafe { &*pac::L1C::ptr() };
-        l1c.l1c_config.modify(|r, w| {w
+        l1c.l1c_config.modify(|_, w| {w
             .irom_2t_access().set_bit()
         });
     }

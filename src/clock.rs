@@ -18,6 +18,11 @@
 //   It contains the root clock source selection (sysclk/flck)
 // The L1C (level 1 cache) section maps tightly-coupled ram/cache SRAM in front of slower buses
 //   (ROM, flash). It contains configuration for internal ROM access latency
+//
+// Currently implemented clock tree configuration options:
+//   - internal 32Mhz RC oscillator for sysclock
+//   - XTAL driving PLL, sysclock frequencies of 48/80/120/160/192Mhz
+//   - UART using PLL if sysclock is using PLL
 
 use crate::pac;
 use crate::gpio::ClkCfg;
@@ -406,12 +411,6 @@ fn glb_set_system_clk_rc32(){
     });
 }
 
-/// Original code supported a bunch of configurations for core clock
-/// There are probably uses for driving PLL using RC or using XTAL direct for root clock,
-/// but it complicates something that is already sufficiently complex.
-/// Settling for two configuration options for now:
-///   - internal 32Mhz RC oscillator for sysclock
-///   - XTAL driving PLL, sysclock frequencies of 48/80/120/160/192Mhz
 pub fn glb_set_system_clk(xtal_freq: u32, sysclk_freq: u32) {
     // Ensure clock is running off internal RC oscillator before changing anything else
     glb_set_system_clk_rc32();

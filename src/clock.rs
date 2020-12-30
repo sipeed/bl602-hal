@@ -30,53 +30,37 @@ use crate::delay::*;
 /// Internal high-speed RC oscillator frequency
 pub const RC32M: u32 = 32_000_000;
 
+/// Frozen clock frequencies
+///
+/// The existance of this value indicates that the clock configuration can no longer be changed
+#[derive(Clone, Copy)]
 pub struct Clocks {
-    pll_xtal_freq: u32,
-    sysclk: u32,
-    uart_clk_div: u8,
+    sysclk: Hertz,
+    uart_clk: Hertz,
+    xtal_freq: Option<Hertz>,
+    pll_enable: bool,
 }
 
 impl Clocks {
     pub fn new() -> Self {
         Clocks {
-            pll_xtal_freq: 0,
-            sysclk: RC32M,
-            uart_clk_div: 0,
+            sysclk: Hertz(RC32M),
+            uart_clk: Hertz(RC32M),
+            xtal_freq: None,
+            pll_enable: false,
         }
     }
 
-    pub fn use_pll<F>(mut self, freq: F) -> Self
-    where
-        F: Into<Hertz>,
-    {
-        self.pll_xtal_freq = freq.into().0;
-        self
+    pub fn sysclk(&self) -> Hertz{
+        self.sysclk
     }
 
-    pub fn sys_clk<F>(mut self, freq: F) -> Self
-    where
-        F: Into<Hertz>,
-    {
-        self.sysclk = freq.into().0;
-        self
+    pub fn pll_enable (&self) -> bool {
+        self.pll_enable
     }
 
     pub const fn uart_clk(&self) -> Hertz {
-        Hertz(160_000_000 / self.uart_clk_div as u32)
-    }
-
-    pub fn freeze(self) -> Clocks {
-        unsafe { &*pac::GLB::ptr() }.clk_cfg2.write(|w| unsafe { w
-            .uart_clk_div().bits(self.uart_clk_div-1)
-            .uart_clk_en().set_bit()
-        });
-        glb_set_system_clk(self.pll_xtal_freq, self.sysclk);
-        let clocks = Clocks {
-            pll_xtal_freq: self.pll_xtal_freq,
-            sysclk: self.sysclk,
-            uart_clk_div: self.uart_clk_div,
-        };
-        clocks
+        self.uart_clk
     }
 }
 
@@ -163,9 +147,10 @@ impl Strict {
 
 
         Clocks {
-            pll_xtal_freq,
-            sysclk,
-            uart_clk_div,
+            sysclk: Hertz(sysclk),
+            uart_clk: Hertz(uart_clk),
+            xtal_freq: Some(Hertz(pll_xtal_freq)),
+            pll_enable: pll_xtal_freq != 0
         }
     }
 }

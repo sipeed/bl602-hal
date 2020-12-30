@@ -130,27 +130,52 @@ impl Strict {
         drop(clk_cfg); // logically use its ownership
 
         // Default to not using the PLL, and selecting the internal RC oscillator if nothing selected
-        // TODO: verify clocks
         let pll_xtal_freq = self.pll_xtal_freq.unwrap_or(0);
+        let pll_enabled = pll_xtal_freq!=0;
         let sysclk = self.sysclk.unwrap_or(RC32M);
+        // If sysclk isn't 32Mhz but PLL isn't enabled, panic
+        assert!((pll_enabled) || (sysclk == RC32M));
 
         // UART config
-        // TODO: use 160_000_000 only when sourced from PLL, otherwise sysclk
-        let uart_clk = self.target_uart_clk.map(|f| f.get()).unwrap_or(40_000_000);
+        let uart_clk =  self.target_uart_clk.map(|f| f.get()).unwrap_or(sysclk);
+        // If PLL is available we'll be using the PLL_160Mhz clock, otherwise sysclk
+        let uart_clk_src = if pll_enabled {
+            160_000_000
+        } else {
+            sysclk
+        };
         let uart_clk_div = {
-            let ans = 160_000_000 / uart_clk;
-            if !(ans >= 1 && ans <= 7) || ans * uart_clk != 160_000_000 {
+            let ans = uart_clk_src / uart_clk;
+            if !(ans >= 1 && ans <= 7) || ans * uart_clk != uart_clk_src {
                 panic!("unreachable uart_clk")
             }
             ans as u8
         };
 
+        // Enable system clock, PLL + crystal if required
+        match sysclk {
+            RC32M => glb_set_system_clk_rc32(),
+            48_000_000 | 80_000_000 | 120_000_000 | 160_000_000  => glb_set_system_clk_pll(sysclk, pll_xtal_freq),
+            _ => panic!("unsupported sysclock frequency"),
+        };
+
+        // If PLL is enabled, use that for the UART base clock
+        // Otherwise, use sysclk as the UART clock
+        unsafe { &*pac::HBN::ptr() }.hbn_glb.modify(|r,w| unsafe { w
+            .hbn_uart_clk_sel().bit(pll_enabled)
+        });
+
+        // Write uart clock divider
+        unsafe { &*pac::GLB::ptr() }.clk_cfg2.write(|w| unsafe { w
+            .uart_clk_div().bits(uart_clk_div - 1 as u8)
+            .uart_clk_en().set_bit()
+        });
 
         Clocks {
             sysclk: Hertz(sysclk),
             uart_clk: Hertz(uart_clk),
             xtal_freq: Some(Hertz(pll_xtal_freq)),
-            pll_enable: pll_xtal_freq != 0
+            pll_enable: pll_enabled
         }
     }
 }
@@ -400,6 +425,8 @@ pub fn glb_set_system_clk(xtal_freq: u32, sysclk_freq: u32) {
 }
 
 fn glb_set_system_clk_pll(target_core_clk: u32, xtal_freq: u32) {
+    // Ensure clock is running off internal RC oscillator before changing anything else
+    glb_set_system_clk_rc32();
     // Power up the external crystal before we start up the PLL
     aon_power_on_xtal();
 

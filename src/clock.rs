@@ -26,9 +26,8 @@
 
 use crate::pac;
 use crate::gpio::ClkCfg;
-use core::{num::NonZeroU32, unimplemented};
+use core::{num::NonZeroU32};
 use embedded_time::rate::Hertz;
-use crate::pac::Peripherals;
 use embedded_hal::blocking::delay::{DelayUs};
 use crate::delay::*;
 
@@ -394,7 +393,7 @@ fn glb_set_system_clk_rc32(){
         .reg_fclk_en().set_bit()
     });
 
-    // Before config XTAL and PLL ,make sure root clk is from RC32M
+    // Before config XTAL and PLL, make sure root clk is from RC32M
     hbn_set_root_clk_sel_rc32();
 
     unsafe { &*pac::GLB::ptr() }.clk_cfg0.modify(|_, w| unsafe { w

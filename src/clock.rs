@@ -411,18 +411,6 @@ fn glb_set_system_clk_rc32(){
     });
 }
 
-pub fn glb_set_system_clk(xtal_freq: u32, sysclk_freq: u32) {
-    // Ensure clock is running off internal RC oscillator before changing anything else
-    glb_set_system_clk_rc32();
-    // if target clock is 32Mhz we don't have to do any more
-    if sysclk_freq == RC32M{
-        return
-    } else {
-        // Configure XTAL, PLL and select it as clock source for fclk
-        glb_set_system_clk_pll(sysclk_freq, xtal_freq)
-    }
-}
-
 fn glb_set_system_clk_pll(target_core_clk: u32, xtal_freq: u32) {
     // Ensure clock is running off internal RC oscillator before changing anything else
     glb_set_system_clk_rc32();

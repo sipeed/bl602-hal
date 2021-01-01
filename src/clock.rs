@@ -184,12 +184,14 @@ impl Strict {
     }
 }
 
+/// Sets the system clock in the (undocumented) system_core_clock register
 fn system_core_clock_set(value:u32){
     unsafe { &*pac::HBN::ptr() }.hbn_rsv2.write(|w| unsafe { w
         .bits(value)
     })
 }
 
+/// Gets the system clock in the (undocumented) system_core_clock register
 fn system_core_clock_get() -> u32 {
     unsafe { &*pac::HBN::ptr() }.hbn_rsv2.read().bits()
 }
@@ -198,7 +200,7 @@ fn glb_set_system_clk_div(hclkdiv:u8, bclkdiv:u8){
     // recommended: fclk<=160MHz, bclk<=80MHz
     // fclk is determined by hclk_div (strange), which then feeds into bclk, hclk and uartclk
     // glb_reg_bclk_dis isn't in the SVD file, so it isn't generated through svd2rust 
-    // It's only used here.
+    // It's only used by this function so define it as a local variable
     let glb_reg_bclk_dis = 0x40000FFC as * mut u32;
     unsafe { &*pac::GLB::ptr() }.clk_cfg0.modify(|_, w| unsafe { w
         .reg_hclk_div().bits(hclkdiv)
@@ -253,7 +255,6 @@ fn pds_power_on_pll(freq: u32) {
     pds_power_off_pll();
 
     // PLL param config
-    //TODO: document + research this a bit more to work out if we can run at other frequecies
     if freq == 26_000_000 {
         pds.clkpll_cp.modify(|_, w| unsafe {w
             .clkpll_icp_1u().bits(1)
@@ -384,7 +385,7 @@ fn pds_enable_pll_all_clks(){
     });
 }
 
-/// Set the system clock to use the internal 32Mhz RC oscillator
+/// Sets the system clock to use the internal 32Mhz RC oscillator
 fn glb_set_system_clk_rc32(){
     // reg_bclk_en = reg_hclk_en = reg_fclk_en = 1, cannot be zero
     unsafe { &*pac::GLB::ptr() }.clk_cfg0.modify(|_, w| { w
@@ -410,6 +411,7 @@ fn glb_set_system_clk_rc32(){
     });
 }
 
+/// Sets the system clock to use the PLL with external crystal
 fn glb_set_system_clk_pll(target_core_clk: u32, xtal_freq: u32) {
     // Ensure clock is running off internal RC oscillator before changing anything else
     glb_set_system_clk_rc32();

@@ -190,7 +190,7 @@ fn system_core_clock_set(value:u32){
     })
 }
 
-pub fn system_core_clock_get() -> u32 {
+fn system_core_clock_get() -> u32 {
     unsafe { &*pac::HBN::ptr() }.hbn_rsv2.read().bits()
 }
 

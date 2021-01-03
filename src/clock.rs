@@ -397,10 +397,7 @@ fn glb_set_system_clk_rc32(){
     // Before config XTAL and PLL, make sure root clk is from RC32M
     hbn_set_root_clk_sel_rc32();
 
-    unsafe { &*pac::GLB::ptr() }.clk_cfg0.modify(|_, w| unsafe { w
-        .reg_hclk_div().bits(0)
-        .reg_bclk_div().bits(0)
-    });
+    glb_set_system_clk_div(0,0);
 
     // Update sysclock
     system_core_clock_set(RC32M);

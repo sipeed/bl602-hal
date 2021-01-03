@@ -170,7 +170,7 @@ impl Strict {
         });
 
         // Write uart clock divider
-        unsafe { &*pac::GLB::ptr() }.clk_cfg2.write(|w| unsafe { w
+        unsafe { &*pac::GLB::ptr() }.clk_cfg2.modify(|_, w| unsafe { w
             .uart_clk_div().bits(uart_clk_div - 1 as u8)
             .uart_clk_en().set_bit()
         });

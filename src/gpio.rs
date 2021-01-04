@@ -84,15 +84,15 @@ macro_rules! impl_uart_sig {
         pub fn into_uart1_rx(self) -> $UartMuxi<Uart1Rx> {
             self.into_uart_mode(7)
         }
+        paste::paste! {
         #[inline]
         fn into_uart_mode<T>(self, mode: u8) -> $UartMuxi<T> {
-            paste::paste! {
             let glb = unsafe { &*pac::GLB::ptr() };
             glb.uart_sig_sel_0.modify(|_r, w| unsafe { w
                 .[<uart_ $sigi _sel>]().bits(mode)
             });
-            }
             $UartMuxi { _mode: PhantomData }
+        }
         }
     }
     };
@@ -243,9 +243,10 @@ $(
         pub fn into_pull_down_input(self) -> $Pini<Input<PullDown>> {
             self.into_pin_with_mode(11, false, true, true)
         }
-        #[inline] fn into_pin_with_mode<T>(&self, mode: u8, pu: bool, pd: bool, ie: bool) -> $Pini<T> {
-            let glb = unsafe { &*pac::GLB::ptr() }; 
         paste::paste! {
+        #[inline]
+        fn into_pin_with_mode<T>(&self, mode: u8, pu: bool, pd: bool, ie: bool) -> $Pini<T> {
+            let glb = unsafe { &*pac::GLB::ptr() }; 
             glb.$gpio_cfgctli.modify(|_r, w| unsafe { w
                 .[<reg_ $gpio_i _func_sel>]().bits(mode) 
                 .[<reg_ $gpio_i _ie>]().bit(ie) // output
@@ -256,25 +257,23 @@ $(
             });
             // If we're an input clear the Output Enable bit as well, else set it.
             glb.gpio_cfgctl34.modify(|_, w| w.[<reg_ $gpio_i _oe>]().bit(!ie));
-        }
             $Pini { _mode: PhantomData }
+        }
         }
     }
 
     impl<MODE> $Pini<Input<MODE>> {
+        paste::paste! {
         /// Enable smitter GPIO input filter
         pub fn enable_smitter(&mut self) {
             let glb = unsafe { &*pac::GLB::ptr() };
-            paste::paste! {
-                glb.$gpio_cfgctli.modify(|_, w| w.[<reg_ $gpio_i _smt>]().set_bit());
-            }
+            glb.$gpio_cfgctli.modify(|_, w| w.[<reg_ $gpio_i _smt>]().set_bit());
         }
         /// Enable smitter GPIO output filter
         pub fn disable_smitter(&mut self) {
             let glb = unsafe { &*pac::GLB::ptr() };
-            paste::paste! {
-                glb.$gpio_cfgctli.modify(|_, w| w.[<reg_ $gpio_i _smt>]().clear_bit());
-            }
+            glb.$gpio_cfgctli.modify(|_, w| w.[<reg_ $gpio_i _smt>]().clear_bit());
+        }
         }
     }
 
@@ -332,54 +331,48 @@ $(
     impl<MODE> InputPin for $Pini<Input<MODE>> {
         type Error = Infallible;
 
+        paste::paste! {
         fn try_is_high(&self) -> Result<bool, Self::Error> {
             let glb = unsafe { &*pac::GLB::ptr() };
-            paste::paste! {
-                Ok(glb.gpio_cfgctl30.read().[<reg_ $gpio_i _i>]().bit_is_set())
-            }
+            Ok(glb.gpio_cfgctl30.read().[<reg_ $gpio_i _i>]().bit_is_set())
         }
 
         fn try_is_low(&self) -> Result<bool, Self::Error> {
             let glb = unsafe { &*pac::GLB::ptr() };
-            paste::paste! {
-                Ok(glb.gpio_cfgctl30.read().[<reg_ $gpio_i _i>]().bit_is_clear())
-            }
+            Ok(glb.gpio_cfgctl30.read().[<reg_ $gpio_i _i>]().bit_is_clear())
+        }
         }
     }
 
     impl<MODE> OutputPin for $Pini<Output<MODE>> {
         type Error = Infallible;
 
+        paste::paste! {
         fn try_set_high(&mut self) -> Result<(), Self::Error> {
             let glb = unsafe { &*pac::GLB::ptr() };
-            paste::paste! {
-                glb.gpio_cfgctl32.modify(|_, w| w.[<reg_ $gpio_i _o>]().set_bit());
-            }
+            glb.gpio_cfgctl32.modify(|_, w| w.[<reg_ $gpio_i _o>]().set_bit());
             Ok(())
         }
 
         fn try_set_low(&mut self) -> Result<(), Self::Error> {
             let glb = unsafe { &*pac::GLB::ptr() };
-            paste::paste! {
-                glb.gpio_cfgctl32.modify(|_, w| w.[<reg_ $gpio_i _o>]().clear_bit());
-            }
+            glb.gpio_cfgctl32.modify(|_, w| w.[<reg_ $gpio_i _o>]().clear_bit());
             Ok(())
+        }
         }
     }
 
     impl<MODE> StatefulOutputPin for $Pini<Output<MODE>> {
+        paste::paste! {
         fn try_is_set_high(&self) -> Result<bool, Self::Error> {
             let glb = unsafe { &*pac::GLB::ptr() };
-            paste::paste! {
-                Ok(glb.gpio_cfgctl32.read().[<reg_ $gpio_i _o>]().bit_is_set())
-            }
+            Ok(glb.gpio_cfgctl32.read().[<reg_ $gpio_i _o>]().bit_is_set())
         }
 
         fn try_is_set_low(&self) -> Result<bool, Self::Error> {
             let glb = unsafe { &*pac::GLB::ptr() };
-            paste::paste! {
-                Ok(glb.gpio_cfgctl32.read().[<reg_ $gpio_i _o>]().bit_is_clear())
-            }
+            Ok(glb.gpio_cfgctl32.read().[<reg_ $gpio_i _o>]().bit_is_clear())
+        }
         }
     }
 

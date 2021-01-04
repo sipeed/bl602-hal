@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bl602-pac = { path = "../bl602-pac" }
+bl602-pac = { git = "https://github.com/sipeed/bl602-pac", branch = "main" }
 embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal" }
 embedded-time = { git = "https://github.com/FluenTech/embedded-time" }
 riscv = "0.6.0"

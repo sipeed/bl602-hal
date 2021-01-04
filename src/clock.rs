@@ -244,7 +244,37 @@ fn pds_power_off_pll(){
     });
 }
 
+/// Power up PLL using C function built into on-chip ROM
+// Powering on the PLL means powering *OFF* the PLL if it's already running.
+// If we're running from flash, this causes a lockup. Running from RAM or ROM is
+// okay though. So there's probably some steps we need to take to do this safely,
+// but the flash peripheral is not documented yet.
+// The easiest solution is to use the C function built into the ROM to do the change.
+#[inline]
+fn pds_power_on_pll_rom(freq: u32) {
+    // Lookup table for ROM function addresses is at 0x21010800
+    // offset for RomDriver_PDS_Power_On_PLL is 88
+    let power_on_pll_lut_entry = (0x21010800 + 88) as * mut u32;
+    let power_on_pll_addr = unsafe { power_on_pll_lut_entry.read_volatile() };
+    let romdriver_pds_power_on_pll = unsafe { 
+        core::mem::transmute::<*const(), extern "C" fn(usize)> (
+                power_on_pll_addr as *const ()
+            ) 
+    };
+    let xtal_src = match freq {
+        24_000_000 =>  1,
+        32_000_000 =>  2,
+        38_400_000 =>  3,
+        40_000_000 =>  4,
+        26_000_000 =>  5,
+        _ => panic!("Unsupported PLL clock source")
+    };
+    romdriver_pds_power_on_pll(xtal_src);
+}
+
 /// Minimal implementation of power-on pll. Currently only allows external xtal
+/// Fails when running from flash - use the pds_power_on_pll_rom for now
+// TODO: work out how to safely power off PLL while running from flash
 fn pds_power_on_pll(freq: u32) {
     let pds = unsafe { &*pac::PDS::ptr() };
     let mut delay = McycleDelay::new(system_core_clock_get());
@@ -416,7 +446,7 @@ fn glb_set_system_clk_pll(target_core_clk: u32, xtal_freq: u32) {
     aon_power_on_xtal();
 
     // Power up PLL and enable all PLL clock output
-    pds_power_on_pll(xtal_freq);
+    pds_power_on_pll_rom(xtal_freq);
 
     let mut delay = McycleDelay::new(system_core_clock_get());
     delay.try_delay_us(55).unwrap();

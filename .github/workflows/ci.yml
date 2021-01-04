@@ -1,0 +1,29 @@
+on: [push, pull_request]
+
+name: Continuous Integration
+
+jobs:
+  rust_check:
+    name: Rust check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Run checks on stable and nightly Rust
+        rust: [stable, nightly]
+
+        include:
+          # Run check with MSRV as well
+          - rust: 1.42.0
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust ${{ matrix.rust }}
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+      - name: Run cargo check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check

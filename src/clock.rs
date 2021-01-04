@@ -33,6 +33,8 @@ use crate::delay::*;
 
 /// Internal high-speed RC oscillator frequency
 pub const RC32M: u32 = 32_000_000;
+/// UART peripheral clock frequency when PLL selected
+pub const UART_PLL_FREQ: u32 = 160_000_000;
 
 /// Frozen clock frequencies
 ///
@@ -149,7 +151,7 @@ impl Strict {
         let uart_clk =  self.target_uart_clk.map(|f| f.get()).unwrap_or(sysclk);
         // If PLL is available we'll be using the PLL_160Mhz clock, otherwise sysclk
         let uart_clk_src = if pll_enabled {
-            160_000_000
+            UART_PLL_FREQ
         } else {
             sysclk
         };

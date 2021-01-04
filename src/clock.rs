@@ -386,7 +386,7 @@ fn pds_power_on_pll(freq: u32) {
     });
 }
 
-fn aon_power_on_xtal() {
+fn aon_power_on_xtal() -> Result<(), &'static str> {
     unsafe { &*pac::AON::ptr() }.rf_top_aon.modify(|_, w| { w
         .pu_xtal_aon().set_bit()
         .pu_xtal_buf_aon().set_bit()
@@ -399,7 +399,11 @@ fn aon_power_on_xtal() {
         delaysrc.try_delay_us(10).unwrap();
         timeout+=1;
     }
-    // TODO: error out on timeout
+    if timeout == 120 {
+        Err("timeout occured")
+    } else {
+        Ok(())
+    }
 }
 
 fn hbn_set_root_clk_sel_pll(){
@@ -450,7 +454,7 @@ fn glb_set_system_clk_pll(target_core_clk: u32, xtal_freq: u32) {
     // Ensure clock is running off internal RC oscillator before changing anything else
     glb_set_system_clk_rc32();
     // Power up the external crystal before we start up the PLL
-    aon_power_on_xtal();
+    aon_power_on_xtal().unwrap();
 
     // Power up PLL and enable all PLL clock output
     pds_power_on_pll_rom(xtal_freq);

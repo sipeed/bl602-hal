@@ -106,12 +106,17 @@ impl Strict {
         self
     }
 
+    /// Enables PLL clock source, using external XTAL frequency provided
     pub fn use_pll(mut self, freq: impl Into<Hertz>) -> Self
     {
         self.pll_xtal_freq = Some(freq.into().0);
         self
     }
 
+    /// Set the system clock frequency (fclk/hclk)
+    ///
+    /// Supported frequencies:
+    ///   `32_000_000`, `48_000_000`, `80_000_000`, `120_000_000`, `160_000_000`
     pub fn sys_clk(mut self, freq: impl Into<Hertz>) -> Self
     {
         self.sysclk = Some(freq.into().0);

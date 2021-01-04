@@ -36,6 +36,16 @@ pub const RC32M: u32 = 32_000_000;
 /// UART peripheral clock frequency when PLL selected
 pub const UART_PLL_FREQ: u32 = 160_000_000;
 
+#[derive(PartialEq, Copy, Clone)]
+#[repr(u32)]
+pub enum SysclkFreq {
+    Rc32Mhz = 32_000_000,
+    Pll48Mhz = 48_000_000,
+    Pll80Mhz = 80_000_000,
+    Pll120Mhz = 120_000_000,
+    Pll160Mhz = 160_000_000,
+}
+
 /// Frozen clock frequencies
 ///
 /// The existance of this value indicates that the clock configuration can no longer be changed
@@ -88,7 +98,7 @@ impl Clocks {
 pub struct Strict {
     target_uart_clk: Option<NonZeroU32>,
     pll_xtal_freq: Option<u32>,
-    sysclk: Option<u32>,
+    sysclk: SysclkFreq,
 }
 
 impl Strict {
@@ -97,7 +107,7 @@ impl Strict {
         Strict {
             target_uart_clk: None,
             pll_xtal_freq: None,
-            sysclk: None,
+            sysclk: SysclkFreq::Rc32Mhz,
         }
     }
 
@@ -119,9 +129,9 @@ impl Strict {
     ///
     /// Supported frequencies:
     ///   `32_000_000`, `48_000_000`, `80_000_000`, `120_000_000`, `160_000_000`
-    pub fn sys_clk(mut self, freq: impl Into<Hertz>) -> Self
+    pub fn sys_clk(mut self, freq: SysclkFreq) -> Self
     {
-        self.sysclk = Some(freq.into().0);
+        self.sysclk = freq;
         self
     }
 
@@ -143,17 +153,17 @@ impl Strict {
         // Default to not using the PLL, and selecting the internal RC oscillator if nothing selected
         let pll_xtal_freq = self.pll_xtal_freq.unwrap_or(0);
         let pll_enabled = pll_xtal_freq!=0;
-        let sysclk = self.sysclk.unwrap_or(RC32M);
+        let sysclk = self.sysclk;
         // If sysclk isn't 32Mhz but PLL isn't enabled, panic
-        assert!((pll_enabled) || (sysclk == RC32M));
+        assert!((pll_enabled) || (sysclk == SysclkFreq::Rc32Mhz));
 
         // UART config
-        let uart_clk =  self.target_uart_clk.map(|f| f.get()).unwrap_or(sysclk);
+        let uart_clk =  self.target_uart_clk.map(|f| f.get()).unwrap_or(sysclk as u32);
         // If PLL is available we'll be using the PLL_160Mhz clock, otherwise sysclk
         let uart_clk_src = if pll_enabled {
             UART_PLL_FREQ
         } else {
-            sysclk
+            sysclk as u32
         };
         let uart_clk_div = {
             let ans = uart_clk_src / uart_clk;
@@ -165,9 +175,8 @@ impl Strict {
 
         // Enable system clock, PLL + crystal if required
         match sysclk {
-            RC32M => glb_set_system_clk_rc32(),
-            48_000_000 | 80_000_000 | 120_000_000 | 160_000_000  => glb_set_system_clk_pll(sysclk, pll_xtal_freq),
-            _ => panic!("unsupported sysclock frequency"),
+            SysclkFreq::Rc32Mhz => glb_set_system_clk_rc32(),
+            _ => glb_set_system_clk_pll(sysclk as u32, pll_xtal_freq),
         };
 
         // If PLL is enabled, use that for the UART base clock
@@ -183,7 +192,7 @@ impl Strict {
         });
 
         Clocks {
-            sysclk: Hertz(sysclk),
+            sysclk: Hertz(sysclk as u32),
             uart_clk: Hertz(uart_clk),
             xtal_freq: Some(Hertz(pll_xtal_freq)),
             pll_enable: pll_enabled

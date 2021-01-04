@@ -261,7 +261,7 @@ fn pds_power_off_pll(){
 fn pds_power_on_pll_rom(freq: u32) {
     // Lookup table for ROM function addresses is at 0x21010800
     // offset for RomDriver_PDS_Power_On_PLL is 88
-    let power_on_pll_lut_entry = (0x21010800 + 88) as * mut u32;
+    let power_on_pll_lut_entry = (0x21010800 + 88) as * mut usize;
     let power_on_pll_addr = unsafe { power_on_pll_lut_entry.read_volatile() };
     let romdriver_pds_power_on_pll = unsafe { 
         core::mem::transmute::<*const(), extern "C" fn(usize)> (

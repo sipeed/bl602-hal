@@ -1,6 +1,5 @@
 //! SoC clock configuration
-// 其实和gpio两个模块同属GLB外设
-// 时钟控制器
+
 // The clocking in this chip is split into several peripheral sections oriented around low power modes
 //
 // Here is a quick overview of the peripheral sections as relates to those modes
@@ -146,7 +145,8 @@ impl Strict {
     /// If strictly accurate value of given `ck_sys` etc. is not reachable, this function
     /// panics.
     pub fn freeze(self, clk_cfg: &mut ClkCfg) -> Clocks {
-        drop(clk_cfg); // logically use its ownership
+        drop(clk_cfg); // todo: logically use its ownership
+        // todo: what register should this function logially use
 
         // Default to not using the PLL, and selecting the internal RC oscillator if nothing selected
         let pll_xtal_freq = self.pll_xtal_freq.unwrap_or(0);
@@ -184,7 +184,7 @@ impl Strict {
         // Otherwise, use sysclk as the UART clock
         unsafe { &*pac::HBN::ptr() }
             .hbn_glb
-            .modify(|r, w| unsafe { w.hbn_uart_clk_sel().bit(pll_enabled) });
+            .modify(|_, w| w.hbn_uart_clk_sel().bit(pll_enabled));
 
         // Write uart clock divider
         unsafe { &*pac::GLB::ptr() }.clk_cfg2.modify(|_, w| unsafe {

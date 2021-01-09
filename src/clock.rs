@@ -79,6 +79,12 @@ impl Clocks {
     }
 }
 
+impl Default for Clocks {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Strict clock configurator
 ///
 /// This configurator only accepts strictly accurate value. If all available frequency
@@ -168,7 +174,8 @@ impl Strict {
         };
         let uart_clk_div = {
             let ans = uart_clk_src / uart_clk;
-            if !(ans >= 1 && ans <= 7) || ans * uart_clk != uart_clk_src {
+
+            if !(1..=7).contains(&ans) || ans * uart_clk != uart_clk_src {
                 panic!("unreachable uart_clk")
             }
             ans as u8
@@ -189,7 +196,7 @@ impl Strict {
         // Write uart clock divider
         unsafe { &*pac::GLB::ptr() }.clk_cfg2.modify(|_, w| unsafe {
             w.uart_clk_div()
-                .bits(uart_clk_div - 1 as u8)
+                .bits(uart_clk_div - 1_u8)
                 .uart_clk_en()
                 .set_bit()
         });
@@ -200,6 +207,12 @@ impl Strict {
             xtal_freq: Some(Hertz(pll_xtal_freq)),
             pll_enable: pll_enabled,
         }
+    }
+}
+
+impl Default for Strict {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

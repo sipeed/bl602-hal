@@ -150,7 +150,7 @@ where
         let baud = config.baudrate.0;
         let divisor = {
             let ans = uart_clk.0 / baud;
-            if !(ans >= 1 && ans <= 65535) {
+            if !(1..=65535).contains(&ans) {
                 panic!("impossible baudrate");
             }
             ans as u16

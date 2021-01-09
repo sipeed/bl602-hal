@@ -245,7 +245,7 @@ $(
         }
         paste::paste! {
         #[inline]
-        fn into_pin_with_mode<T>(&self, mode: u8, pu: bool, pd: bool, ie: bool) -> $Pini<T> {
+        fn into_pin_with_mode<T>(self, mode: u8, pu: bool, pd: bool, ie: bool) -> $Pini<T> {
             let glb = unsafe { &*pac::GLB::ptr() }; 
             glb.$gpio_cfgctli.modify(|_r, w| unsafe { w
                 .[<reg_ $gpio_i _func_sel>]().bits(mode) 

@@ -154,10 +154,7 @@ impl Strict {
     ///
     /// If strictly accurate value of given `ck_sys` etc. is not reachable, this function
     /// panics.
-    pub fn freeze(self, clk_cfg: &mut ClkCfg) -> Clocks {
-        drop(clk_cfg); // todo: logically use its ownership
-                       // todo: what register should this function logially use
-
+    pub fn freeze(self, _clk_cfg: &mut ClkCfg) -> Clocks {
         // Default to not using the PLL, and selecting the internal RC oscillator if nothing selected
         let pll_xtal_freq = self.pll_xtal_freq.unwrap_or(0);
         let pll_enabled = pll_xtal_freq != 0;

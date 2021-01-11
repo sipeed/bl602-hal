@@ -1,7 +1,7 @@
 //! Serial communication
-use embedded_time::rate::{Extensions, Baud};
-use crate::pac;
 use crate::clock::Clocks;
+use crate::pac;
+use embedded_time::rate::{Baud, Extensions};
 
 /// Serial error
 #[derive(Debug)]
@@ -31,26 +31,35 @@ impl Config {
     /// Sets the target baudrate
     pub fn baudrate(mut self, baudrate: impl Into<Baud>) -> Self {
         self.baudrate = baudrate.into();
+
         self
     }
+
     /// Sets parity to no parity check
     pub fn parity_none(mut self) -> Self {
         self.parity = Parity::ParityNone;
+
         self
     }
+
     /// Sets parity check to even
     pub fn parity_even(mut self) -> Self {
         self.parity = Parity::ParityEven;
+
         self
     }
+
     /// Sets parity check to odd
     pub fn parity_odd(mut self) -> Self {
         self.parity = Parity::ParityOdd;
+
         self
     }
+
     /// Sets the target stopbits
     pub fn stopbits(mut self, stopbits: StopBits) -> Self {
         self.stopbits = stopbits;
+
         self
     }
 }
@@ -67,8 +76,8 @@ impl Default for Config {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 /// Order of the bits transmitted and received on the wire
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Order {
     /// Each byte is sent out LSB-first
     LsbFirst,
@@ -132,42 +141,45 @@ pub enum Event {
 /// Serial abstraction
 pub struct Serial<UART, PINS> {
     uart: UART,
-    pins: PINS
+    pins: PINS,
 }
 
-impl<PINS> Serial<pac::UART, PINS> 
-where 
-    PINS: Pins<pac::UART>
-{ // todo: there is uart0 and uart1
-    pub fn uart0(
-        uart: pac::UART,
-        config: Config,
-        pins: PINS,
-        clocks: Clocks,
-    ) -> Self {
+impl<PINS> Serial<pac::UART, PINS>
+where
+    PINS: Pins<pac::UART>,
+{
+    // todo: there is UART0 and UART1
+    pub fn uart0(uart: pac::UART, config: Config, pins: PINS, clocks: Clocks) -> Self {
         // Initialize clocks and baudrate
         let uart_clk = clocks.uart_clk();
         let baud = config.baudrate.0;
         let divisor = {
             let ans = uart_clk.0 / baud;
+
             if !(1..=65535).contains(&ans) {
                 panic!("impossible baudrate");
             }
+
             ans as u16
         };
-        uart.uart_bit_prd.write(|w| unsafe { w
-            .cr_urx_bit_prd().bits(divisor - 1)
-            .cr_utx_bit_prd().bits(divisor - 1)
+
+        uart.uart_bit_prd.write(|w| unsafe {
+            w.cr_urx_bit_prd()
+                .bits(divisor - 1)
+                .cr_utx_bit_prd()
+                .bits(divisor - 1)
         });
+
         // Bit inverse configuration; MsbFirst => 1, LsbFirst => 0
         let order_cfg = match config.order {
             Order::LsbFirst => false,
             Order::MsbFirst => true,
         };
-        uart.data_config.write(|w| w
-            .cr_uart_bit_inv().bit(order_cfg)
-        );
-        // Uart TX config
+
+        uart.data_config
+            .write(|w| w.cr_uart_bit_inv().bit(order_cfg));
+
+        // UART TX config
         let data_bits_cfg = match config.wordlength {
             WordLength::Five => 4,
             WordLength::Six => 5,
@@ -183,32 +195,44 @@ where
         let (parity_enable, parity_type) = match config.parity {
             Parity::ParityNone => (false, false),
             Parity::ParityEven => (true, false), // even => 0
-            Parity::ParityOdd => (true, true), // odd => 1
+            Parity::ParityOdd => (true, true),   // odd => 1
         };
-        uart.utx_config.write(|w| unsafe { w
-            .cr_utx_prt_en().bit(parity_enable)
-            .cr_utx_prt_sel().bit(parity_type)
-            .cr_utx_bit_cnt_d().bits(data_bits_cfg)
-            .cr_utx_bit_cnt_p().bits(stop_bits_cfg) 
-            .cr_utx_frm_en().set_bit() // [!] freerun on // todo
-            .cr_utx_cts_en().bit(PINS::HAS_CTS)
-            .cr_utx_en().bit(PINS::HAS_TX)
+
+        uart.utx_config.write(|w| unsafe {
+            w.cr_utx_prt_en()
+                .bit(parity_enable)
+                .cr_utx_prt_sel()
+                .bit(parity_type)
+                .cr_utx_bit_cnt_d()
+                .bits(data_bits_cfg)
+                .cr_utx_bit_cnt_p()
+                .bits(stop_bits_cfg)
+                .cr_utx_frm_en()
+                .set_bit() // [!] freerun on // todo
+                .cr_utx_cts_en()
+                .bit(PINS::HAS_CTS)
+                .cr_utx_en()
+                .bit(PINS::HAS_TX)
         });
-        // Uart RX config
-        uart.urx_config.write(|w| unsafe { w
-            .cr_urx_prt_en().bit(parity_enable)
-            .cr_urx_prt_sel().bit(parity_type)
-            .cr_urx_bit_cnt_d().bits(data_bits_cfg)
-            .cr_urx_deg_en().clear_bit() // no rx input de-glitch // todo
-            .cr_urx_rts_sw_mode().clear_bit() // no RTS // todo
-            .cr_urx_en().bit(PINS::HAS_RX)
+
+        // UART RX config
+        uart.urx_config.write(|w| unsafe {
+            w.cr_urx_prt_en()
+                .bit(parity_enable)
+                .cr_urx_prt_sel()
+                .bit(parity_type)
+                .cr_urx_bit_cnt_d()
+                .bits(data_bits_cfg)
+                .cr_urx_deg_en()
+                .clear_bit() // no rx input de-glitch // todo
+                .cr_urx_rts_sw_mode()
+                .clear_bit() // no RTS // todo
+                .cr_urx_en()
+                .bit(PINS::HAS_RX)
         });
+
         Serial { uart, pins }
     }
-
-    // pub fn listen(&mut self, event: Event) {
-
-    // }
 
     pub fn free(self) -> (pac::UART, PINS) {
         // todo!
@@ -220,9 +244,10 @@ impl<PINS> embedded_hal::serial::Write<u8> for Serial<pac::UART, PINS> {
     type Error = Error;
 
     fn try_write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
-        self.uart.uart_fifo_wdata.write(|w| unsafe {
-            w.bits(word as u32)
-        });
+        self.uart
+            .uart_fifo_wdata
+            .write(|w| unsafe { w.bits(word as u32) });
+
         Ok(())
     }
 
@@ -240,6 +265,7 @@ impl<PINS> embedded_hal::serial::Read<u8> for Serial<pac::UART, PINS> {
 
     fn try_read(&mut self) -> nb::Result<u8, Self::Error> {
         let ans = self.uart.uart_fifo_rdata.read().bits();
+
         Ok((ans & 0xff) as u8)
     }
 }
@@ -253,25 +279,24 @@ pub unsafe trait RtsPin<UART> {}
 /// Serial cts pins - DO NOT IMPLEMENT THIS TRAIT
 pub unsafe trait CtsPin<UART> {}
 
-
 macro_rules! impl_uart_pin {
     ($(($UartSigi: ident, $UartMuxi: ident),)+) => {
         use crate::gpio::*;
         $(
-unsafe impl<PIN: UartPin<$UartSigi>> TxPin<pac::UART> for (PIN, $UartMuxi<Uart0Tx>) {}
-unsafe impl<PIN: UartPin<$UartSigi>> RxPin<pac::UART> for (PIN, $UartMuxi<Uart0Rx>) {}
-unsafe impl<PIN: UartPin<$UartSigi>> RtsPin<pac::UART> for (PIN, $UartMuxi<Uart0Rts>) {}
-unsafe impl<PIN: UartPin<$UartSigi>> CtsPin<pac::UART> for (PIN, $UartMuxi<Uart0Cts>) {}
-// unsafe impl<PIN: UartPin, SIG: UartSig<Uart1Tx>> TxPin<pac::UART> for (PIN, SIG) {}
-// unsafe impl<PIN: UartPin, SIG: UartSig<Uart1Rx>> RxPin<pac::UART> for (PIN, SIG) {}
-// unsafe impl<PIN: UartPin, SIG: UartSig<Uart1Rts>> RtsPin<pac::UART> for (PIN, SIG) {}
-// unsafe impl<PIN: UartPin, SIG: UartSig<Uart1Cts>> CtsPin<pac::UART> for (PIN, SIG) {}
+        unsafe impl<PIN: UartPin<$UartSigi>> TxPin<pac::UART> for (PIN, $UartMuxi<Uart0Tx>) {}
+        unsafe impl<PIN: UartPin<$UartSigi>> RxPin<pac::UART> for (PIN, $UartMuxi<Uart0Rx>) {}
+        unsafe impl<PIN: UartPin<$UartSigi>> RtsPin<pac::UART> for (PIN, $UartMuxi<Uart0Rts>) {}
+        unsafe impl<PIN: UartPin<$UartSigi>> CtsPin<pac::UART> for (PIN, $UartMuxi<Uart0Cts>) {}
+        // unsafe impl<PIN: UartPin, SIG: UartSig<Uart1Tx>> TxPin<pac::UART> for (PIN, SIG) {}
+        // unsafe impl<PIN: UartPin, SIG: UartSig<Uart1Rx>> RxPin<pac::UART> for (PIN, SIG) {}
+        // unsafe impl<PIN: UartPin, SIG: UartSig<Uart1Rts>> RtsPin<pac::UART> for (PIN, SIG) {}
+        // unsafe impl<PIN: UartPin, SIG: UartSig<Uart1Cts>> CtsPin<pac::UART> for (PIN, SIG) {}
         )+
     };
 }
 
 impl_uart_pin!(
-    (UartSig0, UartMux0), 
+    (UartSig0, UartMux0),
     (UartSig1, UartMux1),
     (UartSig2, UartMux2),
     (UartSig3, UartMux3),
@@ -289,10 +314,10 @@ pub unsafe trait Pins<UART> {
     const HAS_CTS: bool;
 }
 
-unsafe impl<UART, TX, RX> Pins<UART> for (TX, RX) 
-where 
-    TX: TxPin<UART>, 
-    RX: RxPin<UART>
+unsafe impl<UART, TX, RX> Pins<UART> for (TX, RX)
+where
+    TX: TxPin<UART>,
+    RX: RxPin<UART>,
 {
     const HAS_TX: bool = true;
     const HAS_RX: bool = true;
@@ -300,12 +325,12 @@ where
     const HAS_CTS: bool = false;
 }
 
-unsafe impl<UART, TX, RX, RTS, CTS> Pins<UART> for (TX, RX, RTS, CTS) 
-where 
-    TX: TxPin<UART>, 
-    RX: RxPin<UART>, 
-    RTS: RxPin<UART>, 
-    CTS: RxPin<UART>
+unsafe impl<UART, TX, RX, RTS, CTS> Pins<UART> for (TX, RX, RTS, CTS)
+where
+    TX: TxPin<UART>,
+    RX: RxPin<UART>,
+    RTS: RxPin<UART>,
+    CTS: RxPin<UART>,
 {
     const HAS_TX: bool = true;
     const HAS_RX: bool = true;

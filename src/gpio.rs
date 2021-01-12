@@ -202,31 +202,8 @@ pub struct Output<MODE> {
     _mode: PhantomData<MODE>,
 }
 
-/// Alternate function (type state)
-pub struct Alternate<MODE> {
-    _mode: PhantomData<MODE>,
-}
-
-/// Alternate function 1 (type state)
-pub struct AF1;
-/// Alternate function 2 (type state)
-pub struct AF2;
-/// Alternate function 4 (type state)
-pub struct AF4;
-/// Alternate function 6 (type state)
-pub struct AF6;
-/// Alternate function 7 (type state)
+/// UART pin mode (type state)
 pub struct Uart;
-/// Alternate function 8 (type state)
-pub struct AF8;
-/// Alternate function 9 (type state)
-pub struct AF9;
-// AF11 is SwGpio, ignore
-/// Alternate function 14 (type state)
-pub struct AF14;
-
-/// Alternate function 10 (type state)
-pub struct Analog;
 
 #[doc(hidden)]
 pub trait UartPin<SIG> {}
@@ -356,23 +333,6 @@ macro_rules! impl_glb {
             }
 
             impl<MODE> $Pini<MODE> {
-                // todo: documents
-                pub fn into_af1(self) -> $Pini<Alternate<AF1>> {
-                    todo!()
-                }
-
-                pub fn into_af2(self) -> $Pini<Alternate<AF2>> {
-                    todo!()
-                }
-
-                pub fn into_af4(self) -> $Pini<Alternate<AF4>> {
-                    todo!()
-                }
-
-                pub fn into_af6(self) -> $Pini<Alternate<AF6>> {
-                    todo!()
-                }
-
                 paste::paste! {
                     /// Configures the pin to UART alternate mode
                     pub fn [<into_uart_ $sigi>](self) -> $Pini<Uart> {
@@ -380,41 +340,9 @@ macro_rules! impl_glb {
                         self.into_pin_with_mode(7, true, false, true)
                     }
                 }
-
-                pub fn into_af8(self) -> $Pini<Alternate<AF8>> {
-                    todo!()
-                }
-
-                pub fn into_af9(self) -> $Pini<Alternate<AF9>> {
-                    todo!()
-                }
-
-                pub fn into_analog(self) -> $Pini<Analog> {
-                    todo!()
-                }
-
-                pub fn into_af14(self) -> $Pini<Alternate<AF14>> {
-                    todo!()
-                }
             }
 
             impl UartPin<$UartSigi> for $Pini<Uart> {}
-
-            impl<MODE> $Pini<Alternate<MODE>> {
-                // 虽然有这些内部上下拉函数，内部上下拉很弱，大约44K，还是建议片外上拉
-                // todo: english
-                pub fn set_pull_up(&mut self) {
-                    todo!()
-                }
-
-                pub fn set_pull_down(&mut self) {
-                    todo!()
-                }
-
-                pub fn set_floating(&mut self) {
-                    todo!()
-                }
-            }
 
             impl<MODE> InputPin for $Pini<Input<MODE>> {
                 type Error = Infallible;

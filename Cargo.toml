@@ -3,13 +3,16 @@ name = "bl602-hal"
 version = "0.1.0"
 authors = ["Sipeed Co.,Ltd. <support@sipeed.com>", "Luo Jia <me@luojia.cc>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "MIT OR MulanPSL-2.0"
+keywords = ["hal", "bl602", "riscv"]
+categories = ["embedded", "no-std", "hardware-support"]
+repository = "https://github.com/sipeed/bl602-hal"
+description = "HAL for the bl602 microcontroller"
 
 [dependencies]
 bl602-pac = { git = "https://github.com/sipeed/bl602-pac", branch = "main" }
-embedded-hal = { git = "https://github.com/rust-embedded/embedded-hal" }
-embedded-time = { git = "https://github.com/FluenTech/embedded-time" }
+embedded-hal = "1.0.0-alpha.4"
+embedded-time = "0.10"
 riscv = "0.6.0"
-nb = "*"
-paste = "1"
+nb = "1.0"
+paste = "1.0"

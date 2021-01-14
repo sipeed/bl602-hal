@@ -38,26 +38,31 @@ impl McycleDelay {
     #[inline]
     pub fn delay_cycles(cycle_count: u64) {
         let start_cycle_count = McycleDelay::get_cycle_count();
+
         while McycleDelay::cycles_since(start_cycle_count) <= cycle_count {}
     }
 }
 
 impl DelayUs<u64> for McycleDelay {
     type Error = Infallible;
+
     /// Performs a busy-wait loop until the number of microseconds `us` has elapsed
     #[inline]
     fn try_delay_us(&mut self, us: u64) -> Result<(), Infallible> {
         McycleDelay::delay_cycles((us * (self.core_frequency as u64)) / 1_000_000);
+
         Ok(())
     }
 }
 
 impl DelayMs<u64> for McycleDelay {
     type Error = Infallible;
+
     /// Performs a busy-wait loop until the number of milliseconds `ms` has elapsed
     #[inline]
     fn try_delay_ms(&mut self, ms: u64) -> Result<(), Infallible> {
         McycleDelay::delay_cycles((ms * (self.core_frequency as u64)) / 1000);
+
         Ok(())
     }
 }

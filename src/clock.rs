@@ -52,7 +52,7 @@ pub enum SysclkFreq {
 pub struct Clocks {
     sysclk: Hertz,
     uart_clk: Hertz,
-    xtal_freq: Option<Hertz>,
+    _xtal_freq: Option<Hertz>,
     pll_enable: bool,
 }
 
@@ -61,7 +61,7 @@ impl Clocks {
         Clocks {
             sysclk: Hertz(RC32M),
             uart_clk: Hertz(RC32M),
-            xtal_freq: None,
+            _xtal_freq: None,
             pll_enable: false,
         }
     }
@@ -76,6 +76,12 @@ impl Clocks {
 
     pub const fn uart_clk(&self) -> Hertz {
         self.uart_clk
+    }
+}
+
+impl Default for Clocks {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -113,13 +119,16 @@ impl Strict {
     /// Sets the desired frequency for the UART-CLK clock
     pub fn uart_clk(mut self, freq: impl Into<Hertz>) -> Self {
         let freq_hz = freq.into().0;
+
         self.target_uart_clk = NonZeroU32::new(freq_hz);
+
         self
     }
 
     /// Enables PLL clock source, using external XTAL frequency provided
     pub fn use_pll(mut self, freq: impl Into<Hertz>) -> Self {
         self.pll_xtal_freq = Some(freq.into().0);
+
         self
     }
 
@@ -129,6 +138,7 @@ impl Strict {
     ///   `32_000_000`, `48_000_000`, `80_000_000`, `120_000_000`, `160_000_000`
     pub fn sys_clk(mut self, freq: SysclkFreq) -> Self {
         self.sysclk = freq;
+
         self
     }
 
@@ -144,33 +154,35 @@ impl Strict {
     ///
     /// If strictly accurate value of given `ck_sys` etc. is not reachable, this function
     /// panics.
-    pub fn freeze(self, clk_cfg: &mut ClkCfg) -> Clocks {
-        drop(clk_cfg); // todo: logically use its ownership
-        // todo: what register should this function logially use
-
+    pub fn freeze(self, _clk_cfg: &mut ClkCfg) -> Clocks {
         // Default to not using the PLL, and selecting the internal RC oscillator if nothing selected
         let pll_xtal_freq = self.pll_xtal_freq.unwrap_or(0);
         let pll_enabled = pll_xtal_freq != 0;
         let sysclk = self.sysclk;
+
         // If sysclk isn't 32Mhz but PLL isn't enabled, panic
-        assert!((pll_enabled) || (sysclk == SysclkFreq::Rc32Mhz));
+        assert!(pll_enabled || sysclk == SysclkFreq::Rc32Mhz);
 
         // UART config
         let uart_clk = self
             .target_uart_clk
             .map(|f| f.get())
             .unwrap_or(sysclk as u32);
+
         // If PLL is available we'll be using the PLL_160Mhz clock, otherwise sysclk
         let uart_clk_src = if pll_enabled {
             UART_PLL_FREQ
         } else {
             sysclk as u32
         };
+
         let uart_clk_div = {
             let ans = uart_clk_src / uart_clk;
-            if !(ans >= 1 && ans <= 7) || ans * uart_clk != uart_clk_src {
+
+            if !(1..=7).contains(&ans) || ans * uart_clk != uart_clk_src {
                 panic!("unreachable uart_clk")
             }
+
             ans as u8
         };
 
@@ -186,10 +198,10 @@ impl Strict {
             .hbn_glb
             .modify(|_, w| w.hbn_uart_clk_sel().bit(pll_enabled));
 
-        // Write uart clock divider
+        // Write UART clock divider
         unsafe { &*pac::GLB::ptr() }.clk_cfg2.modify(|_, w| unsafe {
             w.uart_clk_div()
-                .bits(uart_clk_div - 1 as u8)
+                .bits(uart_clk_div - 1_u8)
                 .uart_clk_en()
                 .set_bit()
         });
@@ -197,9 +209,15 @@ impl Strict {
         Clocks {
             sysclk: Hertz(sysclk as u32),
             uart_clk: Hertz(uart_clk),
-            xtal_freq: Some(Hertz(pll_xtal_freq)),
+            _xtal_freq: Some(Hertz(pll_xtal_freq)),
             pll_enable: pll_enabled,
         }
+    }
+}
+
+impl Default for Strict {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -220,25 +238,33 @@ fn glb_set_system_clk_div(hclkdiv: u8, bclkdiv: u8) {
     // fclk is determined by hclk_div (strange), which then feeds into bclk, hclk and uartclk
     // glb_reg_bclk_dis isn't in the SVD file, so it isn't generated through svd2rust
     // It's only used by this function so define it as a local variable
-    let glb_reg_bclk_dis = 0x40000FFC as *mut u32;
+    let glb_reg_bclk_dis = 0x4000_0FFC as *mut u32;
+
     unsafe { &*pac::GLB::ptr() }
         .clk_cfg0
         .modify(|_, w| unsafe { w.reg_hclk_div().bits(hclkdiv).reg_bclk_div().bits(bclkdiv) });
     unsafe { glb_reg_bclk_dis.write_volatile(1) };
     unsafe { glb_reg_bclk_dis.write_volatile(0) };
+
     let currclock = system_core_clock_get();
+
     system_core_clock_set(currclock / (hclkdiv as u32 + 1));
 
     let mut delay = McycleDelay::new(system_core_clock_get());
+
     // This delay used to be 8 NOPS (1/4 us). Might need to be replaced again.
     delay.try_delay_us(1).unwrap();
 
     unsafe { &*pac::GLB::ptr() }
         .clk_cfg0
         .modify(|_, w| w.reg_hclk_en().set_bit().reg_bclk_en().set_bit());
+
     delay.try_delay_us(1).unwrap();
 }
 
+// This is a reference implementation of `PDS_Select_XTAL_As_PLL_Ref`.
+// It is currently unused.
+#[allow(dead_code)]
 fn pds_select_xtal_as_pll_ref() {
     unsafe { &*pac::PDS::ptr() }.clkpll_top_ctrl.modify(|_, w| {
         w.clkpll_refclk_sel()
@@ -248,6 +274,9 @@ fn pds_select_xtal_as_pll_ref() {
     });
 }
 
+// This is a reference implementation of `PDS_Power_Off_PLL`.
+// It is currently unused.
+#[allow(dead_code)]
 fn pds_power_off_pll() {
     unsafe { &*pac::PDS::ptr() }
         .pu_rst_clkpll
@@ -275,7 +304,7 @@ fn pds_power_off_pll() {
 fn pds_power_on_pll_rom(freq: u32) {
     // Lookup table for ROM function addresses is at 0x21010800
     // offset for RomDriver_PDS_Power_On_PLL is 88
-    let power_on_pll_lut_entry = (0x21010800 + 88) as *mut usize;
+    let power_on_pll_lut_entry = (0x2101_0800 + 88) as *mut usize;
     let power_on_pll_addr = unsafe { power_on_pll_lut_entry.read_volatile() };
     let romdriver_pds_power_on_pll = unsafe {
         core::mem::transmute::<*const (), extern "C" fn(usize)>(power_on_pll_addr as *const ())
@@ -288,12 +317,17 @@ fn pds_power_on_pll_rom(freq: u32) {
         26_000_000 => 5,
         _ => panic!("Unsupported PLL clock source"),
     };
+
     romdriver_pds_power_on_pll(xtal_src);
 }
 
 /// Minimal implementation of power-on pll. Currently only allows external xtal
 /// Fails when running from flash - use the pds_power_on_pll_rom for now
 // TODO: work out how to safely power off PLL while running from flash
+//
+// This is a reference implementation of `PDS_Power_On_PLL`.
+// It is currently unused.
+#[allow(dead_code)]
 fn pds_power_on_pll(freq: u32) {
     let pds = unsafe { &*pac::PDS::ptr() };
     let mut delay = McycleDelay::new(system_core_clock_get());
@@ -313,6 +347,7 @@ fn pds_power_on_pll(freq: u32) {
                 .clkpll_int_frac_sw()
                 .set_bit()
         });
+
         pds.clkpll_rz.modify(|_, w| unsafe {
             w.clkpll_c3()
                 .bits(2)
@@ -332,6 +367,7 @@ fn pds_power_on_pll(freq: u32) {
                 .clkpll_int_frac_sw()
                 .clear_bit()
         });
+
         pds.clkpll_rz.modify(|_, w| unsafe {
             w.clkpll_c3()
                 .bits(3)
@@ -414,7 +450,9 @@ fn aon_power_on_xtal() -> Result<(), &'static str> {
 
     let mut delaysrc = McycleDelay::new(system_core_clock_get());
     let mut timeout: u32 = 0;
+
     delaysrc.try_delay_us(10).unwrap();
+
     while unsafe { &*pac::AON::ptr() }
         .tsen
         .read()
@@ -425,6 +463,7 @@ fn aon_power_on_xtal() -> Result<(), &'static str> {
         delaysrc.try_delay_us(10).unwrap();
         timeout += 1;
     }
+
     if timeout == 120 {
         Err("timeout occured")
     } else {
@@ -481,6 +520,7 @@ fn glb_set_system_clk_rc32() {
 fn glb_set_system_clk_pll(target_core_clk: u32, xtal_freq: u32) {
     // Ensure clock is running off internal RC oscillator before changing anything else
     glb_set_system_clk_rc32();
+
     // Power up the external crystal before we start up the PLL
     aon_power_on_xtal().unwrap();
 
@@ -528,6 +568,7 @@ fn glb_set_system_clk_pll(target_core_clk: u32, xtal_freq: u32) {
     system_core_clock_set(target_core_clk);
 
     let mut delay = McycleDelay::new(system_core_clock_get());
+
     // This delay used to be 8 NOPS (1/4 us). (GLB_CLK_SET_DUMMY_WAIT) Might need to be replaced again.
     delay.try_delay_us(1).unwrap();
 

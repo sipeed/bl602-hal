@@ -52,7 +52,7 @@ pub enum SysclkFreq {
 pub struct Clocks {
     sysclk: Hertz,
     uart_clk: Hertz,
-    xtal_freq: Option<Hertz>,
+    _xtal_freq: Option<Hertz>,
     pll_enable: bool,
 }
 
@@ -61,7 +61,7 @@ impl Clocks {
         Clocks {
             sysclk: Hertz(RC32M),
             uart_clk: Hertz(RC32M),
-            xtal_freq: None,
+            _xtal_freq: None,
             pll_enable: false,
         }
     }
@@ -209,7 +209,7 @@ impl Strict {
         Clocks {
             sysclk: Hertz(sysclk as u32),
             uart_clk: Hertz(uart_clk),
-            xtal_freq: Some(Hertz(pll_xtal_freq)),
+            _xtal_freq: Some(Hertz(pll_xtal_freq)),
             pll_enable: pll_enabled,
         }
     }
@@ -262,6 +262,9 @@ fn glb_set_system_clk_div(hclkdiv: u8, bclkdiv: u8) {
     delay.try_delay_us(1).unwrap();
 }
 
+// This is a reference implementation of `PDS_Select_XTAL_As_PLL_Ref`.
+// It is currently unused.
+#[allow(dead_code)]
 fn pds_select_xtal_as_pll_ref() {
     unsafe { &*pac::PDS::ptr() }.clkpll_top_ctrl.modify(|_, w| {
         w.clkpll_refclk_sel()
@@ -271,6 +274,9 @@ fn pds_select_xtal_as_pll_ref() {
     });
 }
 
+// This is a reference implementation of `PDS_Power_Off_PLL`.
+// It is currently unused.
+#[allow(dead_code)]
 fn pds_power_off_pll() {
     unsafe { &*pac::PDS::ptr() }
         .pu_rst_clkpll
@@ -318,6 +324,10 @@ fn pds_power_on_pll_rom(freq: u32) {
 /// Minimal implementation of power-on pll. Currently only allows external xtal
 /// Fails when running from flash - use the pds_power_on_pll_rom for now
 // TODO: work out how to safely power off PLL while running from flash
+//
+// This is a reference implementation of `PDS_Power_On_PLL`.
+// It is currently unused.
+#[allow(dead_code)]
 fn pds_power_on_pll(freq: u32) {
     let pds = unsafe { &*pac::PDS::ptr() };
     let mut delay = McycleDelay::new(system_core_clock_get());

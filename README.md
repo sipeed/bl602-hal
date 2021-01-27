@@ -2,6 +2,8 @@
 
 Hardware Abstract Layer for BL602 RISC-V WiFi SoC in embedded Rust.
 
+Matrix: [#bl602-rust:matrix.org](https://matrix.to/#/#bl602-rust:matrix.org)
+
 ## Minimum Supported Rust Version
 
 The minimum supported Rust version (MSRV) for this project is Rust **v1.42.0**. The

@@ -163,18 +163,18 @@ impl Strict {
         // If sysclk isn't 32Mhz but PLL isn't enabled, panic
         assert!(pll_enabled || sysclk == SysclkFreq::Rc32Mhz);
 
-        // UART config
-        let uart_clk = self
-            .target_uart_clk
-            .map(|f| f.get())
-            .unwrap_or(sysclk as u32);
-
         // If PLL is available we'll be using the PLL_160Mhz clock, otherwise sysclk
         let uart_clk_src = if pll_enabled {
             UART_PLL_FREQ
         } else {
             sysclk as u32
         };
+
+        // UART config
+        let uart_clk = self
+            .target_uart_clk
+            .map(|f| f.get())
+            .unwrap_or(uart_clk_src as u32);
 
         let uart_clk_div = {
             let ans = uart_clk_src / uart_clk;

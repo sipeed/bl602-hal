@@ -40,7 +40,6 @@ pub const UART_PLL_FREQ: u32 = 160_000_000;
 pub enum SysclkFreq {
     Rc32Mhz = 32_000_000,
     Pll48Mhz = 48_000_000,
-    Pll80Mhz = 80_000_000,
     Pll120Mhz = 120_000_000,
     Pll160Mhz = 160_000_000,
 }

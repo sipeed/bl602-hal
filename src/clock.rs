@@ -40,7 +40,6 @@ pub const UART_PLL_FREQ: u32 = 160_000_000;
 pub enum SysclkFreq {
     Rc32Mhz = 32_000_000,
     Pll48Mhz = 48_000_000,
-    Pll80Mhz = 80_000_000,
     Pll120Mhz = 120_000_000,
     Pll160Mhz = 160_000_000,
 }
@@ -163,18 +162,18 @@ impl Strict {
         // If sysclk isn't 32Mhz but PLL isn't enabled, panic
         assert!(pll_enabled || sysclk == SysclkFreq::Rc32Mhz);
 
-        // UART config
-        let uart_clk = self
-            .target_uart_clk
-            .map(|f| f.get())
-            .unwrap_or(sysclk as u32);
-
         // If PLL is available we'll be using the PLL_160Mhz clock, otherwise sysclk
         let uart_clk_src = if pll_enabled {
             UART_PLL_FREQ
         } else {
             sysclk as u32
         };
+
+        // UART config
+        let uart_clk = self
+            .target_uart_clk
+            .map(|f| f.get())
+            .unwrap_or(uart_clk_src as u32);
 
         let uart_clk_div = {
             let ans = uart_clk_src / uart_clk;
@@ -303,11 +302,18 @@ fn pds_power_off_pll() {
 #[inline]
 fn pds_power_on_pll_rom(freq: u32) {
     // Lookup table for ROM function addresses is at 0x21010800
-    // offset for RomDriver_PDS_Power_On_PLL is 88
-    let power_on_pll_lut_entry = (0x2101_0800 + 88) as *mut usize;
-    let power_on_pll_addr = unsafe { power_on_pll_lut_entry.read_volatile() };
+    // index in the table for RomDriver_PDS_Power_On_PLL is 88
+    // each entry is a pointer, size of each entry is 4 bytes (sizeof usize)
+    // we can can use core::ptr::offset to calculate the true offset for us.
+    // In my ROM, the address of rom_pds_power_on_pll is 0x2101_4ACE,
+    // this line is commented out in case this is not true for others
+    let rom_function_table_base = (0x2101_0800) as *mut usize;
+    let power_on_pll_entry = unsafe { rom_function_table_base.offset(88) };
+    let power_on_pll_addr = unsafe { power_on_pll_entry.read_volatile() };
+    //assert_eq!(power_on_pll_addr, 0x2101_4ACE);
+
     let romdriver_pds_power_on_pll = unsafe {
-        core::mem::transmute::<*const (), extern "C" fn(usize)>(power_on_pll_addr as *const ())
+        core::mem::transmute::<*const (), extern "C" fn(usize) -> usize >(power_on_pll_addr as *const ())
     };
     let xtal_src = match freq {
         24_000_000 => 1,
@@ -318,7 +324,9 @@ fn pds_power_on_pll_rom(freq: u32) {
         _ => panic!("Unsupported PLL clock source"),
     };
 
-    romdriver_pds_power_on_pll(xtal_src);
+    // 0 == success, 1 == failure, 2 == timeout
+    let pll_success = romdriver_pds_power_on_pll(xtal_src);
+    assert_eq!(pll_success, 0);
 }
 
 /// Minimal implementation of power-on pll. Currently only allows external xtal

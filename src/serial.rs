@@ -154,7 +154,15 @@ where
         let uart_clk = clocks.uart_clk();
         let baud = config.baudrate.0;
         let divisor = {
-            let ans = uart_clk.0 / baud;
+            // Can't possibly have a baudrate greater than uart_clock
+            if baud > uart_clk.0 {
+                panic!("impossible baudrate");
+            }
+            // If we did this calculation using integer math, it always rounds down
+            // Reduce error by doing calculation using floating point, then
+            // add half before converting back to integer to round nearest instead
+            let ans_f = uart_clk.0 as f32 / baud as f32;
+            let ans = (ans_f + 0.5) as u32;
 
             if !(1..=65535).contains(&ans) {
                 panic!("impossible baudrate");

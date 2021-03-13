@@ -1,7 +1,10 @@
 //! Serial communication
 use crate::clock::Clocks;
 use crate::pac;
+use core::fmt;
+use embedded_hal::prelude::_embedded_hal_serial_Write;
 use embedded_time::rate::{Baud, Extensions};
+use nb::block;
 
 /// Serial error
 #[derive(Debug)]
@@ -275,6 +278,18 @@ impl<PINS> embedded_hal::serial::Read<u8> for Serial<pac::UART, PINS> {
         let ans = self.uart.uart_fifo_rdata.read().bits();
 
         Ok((ans & 0xff) as u8)
+    }
+}
+
+impl<UART, PINS> fmt::Write for Serial<UART, PINS>
+where
+    Serial<UART, PINS>: embedded_hal::serial::Write<u8>,
+{
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        s.as_bytes()
+            .iter()
+            .try_for_each(|c| block!(self.try_write(*c)))
+            .map_err(|_| fmt::Error)
     }
 }
 

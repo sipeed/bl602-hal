@@ -266,7 +266,7 @@ impl<PINS> embedded_hal::serial::Write<u8> for Serial<pac::UART, PINS> {
     fn try_flush(&mut self) -> nb::Result<(), Self::Error> {
         // If we're still transmitting or have data in our 32 byte FIFO, return WouldBlock
         if self.uart.uart_fifo_config_1.read().tx_fifo_cnt().bits() != 32
-            && self.uart.uart_status.read().sts_utx_bus_busy().bit_is_set()
+            || self.uart.uart_status.read().sts_utx_bus_busy().bit_is_set()
         {
             Err(nb::Error::WouldBlock)
         } else {

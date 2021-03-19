@@ -252,15 +252,22 @@ impl<PINS> embedded_hal::serial::Write<u8> for Serial<pac::UART, PINS> {
     type Error = Error;
 
     fn try_write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
-        self.uart
-            .uart_fifo_wdata
-            .write(|w| unsafe { w.bits(word as u32) });
-
-        Ok(())
+        // If there's no room to write a byte or more to the FIFO, return WouldBlock
+        if self.uart.uart_fifo_config_1.read().tx_fifo_cnt().bits() == 0 {
+            Err(nb::Error::WouldBlock)
+        } else {
+            self.uart
+                .uart_fifo_wdata
+                .write(|w| unsafe { w.bits(word as u32) });
+            Ok(())
+        }
     }
 
     fn try_flush(&mut self) -> nb::Result<(), Self::Error> {
-        if self.uart.uart_fifo_config_1.read().tx_fifo_cnt().bits() < 1 {
+        // If we're still transmitting or have data in our 32 byte FIFO, return WouldBlock
+        if self.uart.uart_fifo_config_1.read().tx_fifo_cnt().bits() != 32
+            || self.uart.uart_status.read().sts_utx_bus_busy().bit_is_set()
+        {
             Err(nb::Error::WouldBlock)
         } else {
             Ok(())

@@ -1,5 +1,28 @@
+/*!
+  # Serial Peripheral Interface
+  To construct the SPI instances, use the `Spi::spi` function.
+  The pin parameter is a tuple containing `(miso, mosi, cs, sck)` which should be configured via `into_spi_miso, into_spi_mosi, into_spi_ss, into_spi_sclk`.
+
+  CS is optional - so you can also pass a tuple containing `(miso, mosi, sck)`
+  ## Initialisation example
+  ```rust
+    let miso = parts.pin4.into_spi_miso();
+    let mosi = parts.pin5.into_spi_mosi();
+    let ss = parts.pin2.into_spi_ss();
+    let sclk = parts.pin3.into_spi_sclk();
+
+    let mut spi = hal::spi::Spi::spi(
+        dp.SPI,
+        (miso, mosi, ss, sclk),
+        embedded_hal::spi::MODE_0,
+        8_000_000u32.Hz(),
+        clocks,
+    );
+  ```
+*/
+
 use bl602_pac::SPI;
-use embedded_hal::spi::{FullDuplex, Mode};
+pub use embedded_hal::spi::{FullDuplex, Mode};
 use embedded_time::rate::Hertz;
 
 use crate::pac;
@@ -83,6 +106,7 @@ where
 {
 }
 
+/// A Serial Peripheral Interface
 pub struct Spi<SPI, PINS> {
     spi: SPI,
     pins: PINS,
@@ -92,6 +116,11 @@ impl<PINS> Spi<pac::SPI, PINS>
 where
     PINS: Pins<pac::SPI>,
 {
+    /**
+      Constructs an SPI instance in 8bit dataframe mode.
+      The pin parameter tuple (miso, mosi, cs, sck) needs to be configured accordingly.
+      You can also omit `cs` to have manual control over `cs`.
+    */
     pub fn spi(spi: SPI, pins: PINS, mode: Mode, freq: Hertz<u32>, clocks: Clocks) -> Self
     where
         PINS: Pins<pac::SPI>,
@@ -146,11 +175,25 @@ where
         Spi { spi, pins }
     }
 
-    pub fn free(self) -> (pac::SPI, PINS) {
-        // todo!
+    pub fn release(self) -> (pac::SPI, PINS) {
         (self.spi, self.pins)
     }
 
+    /// Select which frame format is used for data transfers
+    pub fn bit_format(&mut self, format: SpiBitFormat) {
+        match format {
+            SpiBitFormat::LsbFirst => self
+                .spi
+                .spi_config
+                .modify(|_, w| w.cr_spi_bit_inv().set_bit()),
+            SpiBitFormat::MsbFirst => self
+                .spi
+                .spi_config
+                .modify(|_, w| w.cr_spi_bit_inv().clear_bit()),
+        }
+    }
+
+    /// Clear FIFOs
     pub fn clear_fifo(&mut self) {
         self.spi
             .spi_fifo_config_0

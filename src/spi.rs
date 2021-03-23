@@ -75,6 +75,14 @@ where
 {
 }
 
+unsafe impl<MISO, MOSI, SCLK> Pins<SPI> for (MISO, MOSI, SCLK)
+where
+    MISO: MisoPin<SPI>,
+    MOSI: MosiPin<SPI>,
+    SCLK: SclkPin<SPI>,
+{
+}
+
 pub struct Spi<SPI, PINS> {
     spi: SPI,
     pins: PINS,

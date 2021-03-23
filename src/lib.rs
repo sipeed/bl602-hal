@@ -7,6 +7,7 @@ pub mod clock;
 pub mod delay;
 pub mod gpio;
 pub mod serial;
+pub mod spi;
 
 /// HAL crate prelude
 pub mod prelude {

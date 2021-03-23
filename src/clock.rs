@@ -28,7 +28,7 @@ use crate::gpio::ClkCfg;
 use crate::pac;
 use core::num::NonZeroU32;
 use embedded_hal::blocking::delay::DelayUs;
-use embedded_time::rate::Hertz;
+use embedded_time::rate::{Extensions, Hertz};
 
 /// Internal high-speed RC oscillator frequency
 pub const RC32M: u32 = 32_000_000;
@@ -51,6 +51,7 @@ pub enum SysclkFreq {
 pub struct Clocks {
     sysclk: Hertz,
     uart_clk: Hertz,
+    spi_clk: Hertz,
     _xtal_freq: Option<Hertz>,
     pll_enable: bool,
 }
@@ -60,6 +61,7 @@ impl Clocks {
         Clocks {
             sysclk: Hertz(RC32M),
             uart_clk: Hertz(RC32M),
+            spi_clk: Hertz(RC32M),
             _xtal_freq: None,
             pll_enable: false,
         }
@@ -75,6 +77,10 @@ impl Clocks {
 
     pub const fn uart_clk(&self) -> Hertz {
         self.uart_clk
+    }
+
+    pub const fn spi_clk(&self) -> Hertz {
+        self.spi_clk
     }
 }
 
@@ -100,6 +106,7 @@ impl Default for Clocks {
 /// same 50MHz into `Precise` it would not panic, but would set and freeze into
 /// 50.20MHz as the frequency error is smallest.
 pub struct Strict {
+    target_spi_clk: Option<NonZeroU32>,
     target_uart_clk: Option<NonZeroU32>,
     pll_xtal_freq: Option<u32>,
     sysclk: SysclkFreq,
@@ -109,10 +116,20 @@ impl Strict {
     /// Create a strict configurator
     pub fn new() -> Self {
         Strict {
+            target_spi_clk: None,
             target_uart_clk: None,
             pll_xtal_freq: None,
             sysclk: SysclkFreq::Rc32Mhz,
         }
+    }
+
+    /// Sets the desired frequency for the SPI-CLK clock
+    pub fn spi_clk(mut self, freq: impl Into<Hertz>) -> Self {
+        let freq_hz = freq.into().0;
+
+        self.target_spi_clk = NonZeroU32::new(freq_hz);
+
+        self
     }
 
     /// Sets the desired frequency for the UART-CLK clock
@@ -205,9 +222,43 @@ impl Strict {
                 .set_bit()
         });
 
+        /*
+        from hal_spi.c
+        if (i == 0) {
+            blog_error("The max speed is 40000000 Hz, please set it smaller.");
+            return -1;
+        } else if (i == 256) {
+            blog_error("The min speed is 156250 Hz, please set it bigger.");
+            return -1;
+        } else {
+            if ( ((40000000/(i+1)) - speed) > (speed - (40000000/i)) ) {
+                real_speed = (40000000/(i+1));
+                blog_info("not support speed: %ld, change real_speed = %ld\r\n", speed, real_speed);
+            } else {
+                real_speed = (40000000/i);
+                blog_info("not support speed: %ld, change real_speed = %ld\r\n", speed, real_speed);
+            }
+        }
+        */
+
+        // SPI config
+        let spi_clk = self
+            .target_spi_clk
+            .map(|f| f.get())
+            .unwrap_or(32_000_000u32);
+
+        // SPI Clock Divider (BUS_CLK/(N+1)), default BUS_CLK/4
+        let bus_clock = calculate_bus_clock();
+        let spi_clk_div = ((bus_clock.0 / spi_clk - 1) & 0b11111) as u8;
+        // Write SPI clock divider
+        unsafe { &*pac::GLB::ptr() }
+            .clk_cfg3
+            .modify(|_, w| unsafe { w.spi_clk_div().bits(spi_clk_div).spi_clk_en().set_bit() });
+
         Clocks {
             sysclk: Hertz(sysclk as u32),
             uart_clk: Hertz(uart_clk),
+            spi_clk: Hertz(spi_clk),
             _xtal_freq: Some(Hertz(pll_xtal_freq)),
             pll_enable: pll_enabled,
         }
@@ -218,6 +269,44 @@ impl Default for Strict {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Gets the current bus clock rate
+fn calculate_bus_clock() -> Hertz {
+    let root_clk_sel = unsafe { &*pac::GLB::ptr() }
+        .clk_cfg0
+        .read()
+        .hbn_root_clk_sel()
+        .bits();
+    let pll_clk_sel = unsafe { &*pac::GLB::ptr() }
+        .clk_cfg0
+        .read()
+        .reg_pll_sel()
+        .bits();
+    let hclk_div = unsafe { &*pac::GLB::ptr() }
+        .clk_cfg0
+        .read()
+        .reg_hclk_div()
+        .bits();
+    let bclk_div = unsafe { &*pac::GLB::ptr() }
+        .clk_cfg0
+        .read()
+        .reg_bclk_div()
+        .bits();
+
+    let root = match root_clk_sel {
+        0 => 32_000_000_u32.Hz(),
+        1 => 40_000_000_u32.Hz(),
+        _ => match pll_clk_sel {
+            0 => 48_000_000_u32.Hz(),
+            1 => 120_000_000_u32.Hz(),
+            2 => 160_000_000_u32.Hz(),
+            _ => 192_000_000_u32.Hz(),
+        },
+    };
+
+    let root = root / (hclk_div as u32 + 1) / (bclk_div as u32 + 1);
+    root.into()
 }
 
 /// Sets the system clock in the (undocumented) system_core_clock register
@@ -313,7 +402,9 @@ fn pds_power_on_pll_rom(freq: u32) {
     //assert_eq!(power_on_pll_addr, 0x2101_4ACE);
 
     let romdriver_pds_power_on_pll = unsafe {
-        core::mem::transmute::<*const (), extern "C" fn(usize) -> usize >(power_on_pll_addr as *const ())
+        core::mem::transmute::<*const (), extern "C" fn(usize) -> usize>(
+            power_on_pll_addr as *const (),
+        )
     };
     let xtal_src = match freq {
         24_000_000 => 1,

@@ -133,7 +133,7 @@ where
             .modify(|_r, w| w.reg_spi_0_master_mode().set_bit());
 
         let len = clocks.spi_clk().0 / freq.0;
-        if len > 255 || len == 0 {
+        if len > 256 || len == 0 {
             panic!("Cannot reach the desired SPI frequency");
         }
 

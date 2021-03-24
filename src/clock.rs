@@ -232,7 +232,7 @@ impl Strict {
         let bus_clock = calculate_bus_clock();
         let spi_clk_div = bus_clock.0 / spi_clk;
 
-        if spi_clk_div == 0 || spi_clk_div > 0b11111 {
+        if spi_clk_div == 0 || spi_clk_div > 0b100000 {
             panic!("Unreachable SPI_CLK");
         }
 

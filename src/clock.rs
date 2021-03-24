@@ -222,25 +222,6 @@ impl Strict {
                 .set_bit()
         });
 
-        /*
-        from hal_spi.c
-        if (i == 0) {
-            blog_error("The max speed is 40000000 Hz, please set it smaller.");
-            return -1;
-        } else if (i == 256) {
-            blog_error("The min speed is 156250 Hz, please set it bigger.");
-            return -1;
-        } else {
-            if ( ((40000000/(i+1)) - speed) > (speed - (40000000/i)) ) {
-                real_speed = (40000000/(i+1));
-                blog_info("not support speed: %ld, change real_speed = %ld\r\n", speed, real_speed);
-            } else {
-                real_speed = (40000000/i);
-                blog_info("not support speed: %ld, change real_speed = %ld\r\n", speed, real_speed);
-            }
-        }
-        */
-
         // SPI config
         let spi_clk = self
             .target_spi_clk
@@ -249,11 +230,17 @@ impl Strict {
 
         // SPI Clock Divider (BUS_CLK/(N+1)), default BUS_CLK/4
         let bus_clock = calculate_bus_clock();
-        let spi_clk_div = ((bus_clock.0 / spi_clk - 1) & 0b11111) as u8;
+        let spi_clk_div = bus_clock.0 / spi_clk;
+
+        if spi_clk_div == 0 || spi_clk_div > 0b11111 {
+            panic!("Unreachable SPI_CLK");
+        }
+
+        let spi_clk_div = ((spi_clk_div - 1) & 0b11111) as u8;
         // Write SPI clock divider
         unsafe { &*pac::GLB::ptr() }
             .clk_cfg3
-            .modify(|_, w| unsafe { w.spi_clk_div().bits(spi_clk_div).spi_clk_en().set_bit() });
+            .modify(|_, w| unsafe { w.spi_clk_en().set_bit().spi_clk_div().bits(spi_clk_div) });
 
         Clocks {
             sysclk: Hertz(sysclk as u32),

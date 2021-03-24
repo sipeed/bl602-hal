@@ -33,12 +33,14 @@ use crate::clock::Clocks;
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum Error {
-    /// Overrun occurred
-    Overrun,
-    /// Mode fault occurred
-    ModeFault,
-    /// CRC error
-    Crc,
+    /// Rx overflow occurred
+    RxOverflow,
+    /// Rx underflow occurred
+    RxUnderflow,
+    /// Tx overflow occurred
+    TxOverflow,
+    /// Tx underflow occurred
+    TxUnderflow,
 }
 
 /// The bit format to send the data in
@@ -131,12 +133,12 @@ where
             .modify(|_r, w| w.reg_spi_0_master_mode().set_bit());
 
         let len = clocks.spi_clk().0 / freq.0;
-        if len > 0b11111 || len == 0 {
+        if len > 255 || len == 0 {
             panic!("Cannot reach the desired SPI frequency");
         }
 
         // TODO the measured frequency of SCLK is half of what I configure
-        let len = ((len - 1) & 0b11111) as u8;
+        let len = (len - 1) as u8;
         spi.spi_prd_0.modify(|_r, w| unsafe {
             w.cr_spi_prd_s()
                 .bits(len)
@@ -208,7 +210,13 @@ where
     type Error = Error;
 
     fn try_read(&mut self) -> nb::Result<u8, Error> {
-        if self.spi.spi_fifo_config_1.read().rx_fifo_cnt().bits() == 0 {
+        let spi_fifo_config_0 = self.spi.spi_fifo_config_0.read();
+
+        if spi_fifo_config_0.rx_fifo_overflow().bit_is_set() {
+            Err(nb::Error::Other(Error::RxOverflow))
+        } else if spi_fifo_config_0.rx_fifo_underflow().bit_is_set() {
+            Err(nb::Error::Other(Error::RxUnderflow))
+        } else if self.spi.spi_fifo_config_1.read().rx_fifo_cnt().bits() == 0 {
             Err(nb::Error::WouldBlock)
         } else {
             Ok((self.spi.spi_fifo_rdata.read().bits() & 0xff) as u8)
@@ -216,7 +224,13 @@ where
     }
 
     fn try_send(&mut self, data: u8) -> nb::Result<(), Self::Error> {
-        if self.spi.spi_fifo_config_1.read().tx_fifo_cnt().bits() == 0 {
+        let spi_fifo_config_0 = self.spi.spi_fifo_config_0.read();
+
+        if spi_fifo_config_0.tx_fifo_overflow().bit_is_set() {
+            Err(nb::Error::Other(Error::TxOverflow))
+        } else if spi_fifo_config_0.tx_fifo_underflow().bit_is_set() {
+            Err(nb::Error::Other(Error::TxUnderflow))
+        } else if self.spi.spi_fifo_config_1.read().tx_fifo_cnt().bits() == 0 {
             Err(nb::Error::WouldBlock)
         } else {
             self.spi

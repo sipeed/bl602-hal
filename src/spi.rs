@@ -161,8 +161,8 @@ where
                 })
                 .cr_spi_sclk_ph()
                 .bit(match mode.phase {
-                    embedded_hal::spi::Phase::CaptureOnFirstTransition => false,
-                    embedded_hal::spi::Phase::CaptureOnSecondTransition => true,
+                    embedded_hal::spi::Phase::CaptureOnFirstTransition => true,
+                    embedded_hal::spi::Phase::CaptureOnSecondTransition => false,
                 })
                 .cr_spi_m_cont_en()
                 .clear_bit() // disable cont mode

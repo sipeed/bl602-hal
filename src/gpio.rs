@@ -205,6 +205,9 @@ pub struct Output<MODE> {
 /// UART pin mode (type state)
 pub struct Uart;
 
+/// SPI pin mode (type state)
+pub struct Spi;
+
 #[doc(hidden)]
 pub trait UartPin<SIG> {}
 
@@ -341,7 +344,7 @@ macro_rules! impl_glb {
                     }
 
                     /// Configures the pin to SPI alternate mode
-                    pub fn [<into_spi_ $spi_kind>](self) -> $Pini<Uart> {
+                    pub fn [<into_spi_ $spi_kind>](self) -> $Pini<Spi> {
                         // 4 -> GPIO0_FUN_SPI_x
                         self.into_pin_with_mode(4, true, false, true)
                     }

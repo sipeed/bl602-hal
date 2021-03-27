@@ -122,6 +122,8 @@ where
       Constructs an SPI instance in 8bit dataframe mode.
       The pin parameter tuple (miso, mosi, cs, sck) needs to be configured accordingly.
       You can also omit `cs` to have manual control over `cs`.
+
+      The frequency cannot be more than half of the spi clock frequency.
     */
     pub fn spi(spi: SPI, pins: PINS, mode: Mode, freq: Hertz<u32>, clocks: Clocks) -> Self
     where
@@ -129,15 +131,20 @@ where
     {
         let glb = unsafe { &*pac::GLB::ptr() };
 
-        glb.glb_parm
-            .modify(|_r, w| w.reg_spi_0_master_mode().set_bit());
+        glb.glb_parm.modify(|_r, w| {
+            w.reg_spi_0_master_mode()
+                .set_bit()
+                .reg_spi_0_swap()
+                .set_bit()
+        });
 
-        let len = clocks.spi_clk().0 / freq.0;
+        // length of phase 0 and 1 (i.e. low / high values of SCLK)
+        // needs to be divided by two
+        let len = clocks.spi_clk().0 / freq.0 / 2;
         if len > 256 || len == 0 {
             panic!("Cannot reach the desired SPI frequency");
         }
 
-        // TODO the measured frequency of SCLK is half of what I configure
         let len = (len - 1) as u8;
         spi.spi_prd_0.modify(|_r, w| unsafe {
             w.cr_spi_prd_s()

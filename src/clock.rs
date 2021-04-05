@@ -52,6 +52,7 @@ pub struct Clocks {
     sysclk: Hertz,
     uart_clk: Hertz,
     spi_clk: Hertz,
+    i2c_clk: Hertz,
     _xtal_freq: Option<Hertz>,
     pll_enable: bool,
 }
@@ -62,6 +63,7 @@ impl Clocks {
             sysclk: Hertz(RC32M),
             uart_clk: Hertz(RC32M),
             spi_clk: Hertz(RC32M),
+            i2c_clk: Hertz(RC32M),
             _xtal_freq: None,
             pll_enable: false,
         }
@@ -81,6 +83,10 @@ impl Clocks {
 
     pub const fn spi_clk(&self) -> Hertz {
         self.spi_clk
+    }
+
+    pub const fn i2c_clk(&self) -> Hertz {
+        self.i2c_clk
     }
 }
 
@@ -106,6 +112,7 @@ impl Default for Clocks {
 /// same 50MHz into `Precise` it would not panic, but would set and freeze into
 /// 50.20MHz as the frequency error is smallest.
 pub struct Strict {
+    target_i2c_clk: Option<NonZeroU32>,
     target_spi_clk: Option<NonZeroU32>,
     target_uart_clk: Option<NonZeroU32>,
     pll_xtal_freq: Option<u32>,
@@ -116,11 +123,21 @@ impl Strict {
     /// Create a strict configurator
     pub fn new() -> Self {
         Strict {
+            target_i2c_clk: None,
             target_spi_clk: None,
             target_uart_clk: None,
             pll_xtal_freq: None,
             sysclk: SysclkFreq::Rc32Mhz,
         }
+    }
+
+    /// Sets the desired frequency for the I2C-CLK clock
+    pub fn i2c_clk(mut self, freq: impl Into<Hertz>) -> Self {
+        let freq_hz = freq.into().0;
+
+        self.target_i2c_clk = NonZeroU32::new(freq_hz);
+
+        self
     }
 
     /// Sets the desired frequency for the SPI-CLK clock
@@ -242,10 +259,30 @@ impl Strict {
             .clk_cfg3
             .modify(|_, w| unsafe { w.spi_clk_en().set_bit().spi_clk_div().bits(spi_clk_div) });
 
+        // I2C config
+        let i2c_clk = self
+            .target_i2c_clk
+            .map(|f| f.get())
+            .unwrap_or(32_000_000u32);
+
+        // I2C Clock Divider (BUS_CLK/(N+1)), default BUS_CLK/255
+        let i2c_clk_div = bus_clock.0 / i2c_clk;
+
+        if i2c_clk_div == 0 || i2c_clk_div > 255 {
+            panic!("Unreachable I2C_CLK");
+        }
+
+        let i2c_clk_div = ((i2c_clk_div - 1) & 0xff) as u8;
+        // Write I2C clock divider
+        unsafe { &*pac::GLB::ptr() }
+            .clk_cfg3
+            .modify(|_, w| unsafe { w.i2c_clk_en().set_bit().i2c_clk_div().bits(i2c_clk_div) });
+
         Clocks {
             sysclk: Hertz(sysclk as u32),
             uart_clk: Hertz(uart_clk),
             spi_clk: Hertz(spi_clk),
+            i2c_clk: Hertz(i2c_clk),
             _xtal_freq: Some(Hertz(pll_xtal_freq)),
             pll_enable: pll_enabled,
         }
@@ -292,8 +329,7 @@ fn calculate_bus_clock() -> Hertz {
         },
     };
 
-    let root = root / (hclk_div as u32 + 1) / (bclk_div as u32 + 1);
-    root.into()
+    root / (hclk_div as u32 + 1) / (bclk_div as u32 + 1)
 }
 
 /// Sets the system clock in the (undocumented) system_core_clock register

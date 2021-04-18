@@ -56,8 +56,10 @@ pub fn _setup_interrupts() {
     }
 
     // disable all interrupts
-    let e = unsafe {core::slice::from_raw_parts_mut((CLIC_HART0_ADDR + CLIC_INTIE) as *mut u32, 16)};
-    let p = unsafe {core::slice::from_raw_parts_mut((CLIC_HART0_ADDR + CLIC_INTIP) as *mut u32, 16)};
+    let e =
+        unsafe { core::slice::from_raw_parts_mut((CLIC_HART0_ADDR + CLIC_INTIE) as *mut u32, 16) };
+    let p =
+        unsafe { core::slice::from_raw_parts_mut((CLIC_HART0_ADDR + CLIC_INTIP) as *mut u32, 16) };
     e.fill(0);
     p.fill(0);
 

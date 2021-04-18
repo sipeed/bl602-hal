@@ -197,21 +197,21 @@ macro_rules! impl_timer_channel {
 
                 /// Sets match register 0
                 pub fn set_match0(&self, time: Milliseconds) {
-                    let time = (self.clock.0 as u128 * time.0 as u128 / 1_000u128) as u32;
+                    let time = (self.clock.0 as u64 * time.0 as u64 / 1_000u64) as u32;
                     let timer = unsafe { &*pac::TIMER::ptr() };
                     timer.[<tmr $channel _0>].modify(|_r, w| unsafe { w.tmr().bits(time) });
                 }
 
                 /// Sets match register 1
                 pub fn set_match1(&self, time: Milliseconds) {
-                    let time = (self.clock.0 as u128 * time.0 as u128 / 1_000u128) as u32;
+                    let time = (self.clock.0 as u64 * time.0 as u64 / 1_000u64) as u32;
                     let timer = unsafe { &*pac::TIMER::ptr() };
                     timer.[<tmr $channel _1>].modify(|_r, w| unsafe { w.tmr().bits(time) });
                 }
 
                 /// Sets match register 2
                 pub fn set_match2(&self, time: Milliseconds) {
-                    let time = (self.clock.0 as u128 * time.0 as u128 / 1_000u128) as u32;
+                    let time = (self.clock.0 as u64 * time.0 as u64 / 1_000u64) as u32;
                     let timer = unsafe { &*pac::TIMER::ptr() };
                     timer.[<tmr $channel _2>].modify(|_r, w| unsafe { w.tmr().bits(time) });
                 }
@@ -225,8 +225,8 @@ macro_rules! impl_timer_channel {
                 // Current counter value in milliseconds.
                 pub fn current_time(&self) -> Milliseconds {
                     let timer = unsafe { &*pac::TIMER::ptr() };
-                    let ticks = timer.[<tcr $channel>].read().bits() as u128;
-                    Milliseconds::new(((ticks * 1_000u128 / self.clock.0 as u128 * 1_000u128) / 1_000u128) as u32)
+                    let ticks = timer.[<tcr $channel>].read().bits() as u64;
+                    Milliseconds::new( (ticks as u64 * 1000u64 / self.clock.0 as u64) as u32)
                 }
 
                 /// Will only become true if `enable_match0_interrupt` is active
@@ -261,7 +261,7 @@ macro_rules! impl_timer_channel {
 
                 /// The value which should be used for preload.
                 pub fn set_preload_value(&self, time: Milliseconds) {
-                    let time = (self.clock.0 as u128 * time.0 as u128 / 1_000u128) as u32;
+                    let time = (self.clock.0 as u64 * time.0 as u64 / 1_000u64) as u32;
                     let timer = unsafe { &*pac::TIMER::ptr() };
                     timer.[<tplvr $channel>].modify(|_r, w| unsafe { w.bits(time) });
                 }

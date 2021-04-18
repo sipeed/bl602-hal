@@ -60,8 +60,9 @@ pub fn _setup_interrupts() {
         unsafe { core::slice::from_raw_parts_mut((CLIC_HART0_ADDR + CLIC_INTIE) as *mut u32, 16) };
     let p =
         unsafe { core::slice::from_raw_parts_mut((CLIC_HART0_ADDR + CLIC_INTIP) as *mut u32, 16) };
-    e.fill(0);
-    p.fill(0);
+
+    e.iter_mut().for_each(|v| *v = 0);
+    p.iter_mut().for_each(|v| *v = 0);
 
     unsafe {
         riscv::interrupt::enable();

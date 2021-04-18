@@ -1,3 +1,5 @@
+del bin\*.o /q
+
 set crate=bl602-hal
 
 riscv64-unknown-elf-gcc -ggdb3 -fdebug-prefix-map=%cd%=/%crate% -c -mabi=ilp32 -march=rv32i asm.S -o bin/%crate%.o

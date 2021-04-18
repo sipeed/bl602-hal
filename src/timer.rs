@@ -10,7 +10,7 @@
         .channel0
         .set_clock_source(ClockSource::Clock1Khz, 1_000u32.Hz());
 
-    ch0.enable_match1_interrupt();
+    ch0.enable_match0_interrupt();
     ch0.enable_match1_interrupt();
     ch0.disable_match2_interrupt();
 

@@ -37,7 +37,6 @@ const IRQ_NUM_BASE: u32 = 16;
 const CLIC_HART0_ADDR: u32 = 0x02800000;
 const CLIC_INTIE: u32 = 0x400;
 const CLIC_INTIP: u32 = 0x000;
-const IRQN_LAST: u32 = IRQ_NUM_BASE + 63;
 
 const GPIO_IRQ: u32 = IRQ_NUM_BASE + 44;
 const TIMER_CH0_IRQ: u32 = IRQ_NUM_BASE + 36;
@@ -57,19 +56,10 @@ pub fn _setup_interrupts() {
     }
 
     // disable all interrupts
-    for i in (0..IRQN_LAST).step_by(4) {
-        let ptr = CLIC_HART0_ADDR + CLIC_INTIE + i;
-        let ptr = ptr as *mut u32;
-        unsafe {
-            ptr.write_volatile(0);
-        }
-
-        let ptr = CLIC_HART0_ADDR + CLIC_INTIP + i;
-        let ptr = ptr as *mut u32;
-        unsafe {
-            ptr.write_volatile(0);
-        }
-    }
+    let e = unsafe {core::slice::from_raw_parts_mut((CLIC_HART0_ADDR + CLIC_INTIE) as *mut u32, 16)};
+    let p = unsafe {core::slice::from_raw_parts_mut((CLIC_HART0_ADDR + CLIC_INTIP) as *mut u32, 16)};
+    e.fill(0);
+    p.fill(0);
 
     unsafe {
         riscv::interrupt::enable();

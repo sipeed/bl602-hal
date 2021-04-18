@@ -25,6 +25,7 @@
 
 use crate::{clock::Clocks, pac};
 use bl602_pac::TIMER;
+use core::cell::RefCell;
 use embedded_time::{
     duration::Milliseconds,
     rate::{Extensions, Hertz},
@@ -110,13 +111,12 @@ macro_rules! impl_timer_channel {
     ($name: ident, $conf_name: ident, $channel: literal, $channel_cs: literal) => {
 
         /// A configured timer channel ready to use.
-        ///
-        /// Be cautios when creating a [Timer](embedded_time::Timer) from this and using `wait` on it.
-        /// If the timer is configured to never reach the target time it will block forever.
         pub struct $conf_name {
             clock: Hertz,
             count_down_target: Option<Milliseconds>,
             last_count_down_value: Option<Milliseconds>,
+            last_read_clock_time: RefCell<Option<Milliseconds>>,
+            is_running: RefCell<bool>,
         }
 
         paste! {
@@ -161,12 +161,14 @@ macro_rules! impl_timer_channel {
                 pub fn enable(&self) {
                     let timer = unsafe { &*pac::TIMER::ptr() };
                     timer.tcer.modify(|_r, w| w.[<timer $channel _en>]().set_bit());
+                    self.is_running.replace(true);
                 }
 
                 /// Disable this counter
                 pub fn disable(&self) {
                     let timer = unsafe { &*pac::TIMER::ptr() };
                     timer.tcer.modify(|_r, w| w.[<timer $channel _en>]().set_bit());
+                    self.is_running.replace(false);
                 }
 
                 /// Clear interrupt for match register 0.
@@ -318,7 +320,21 @@ macro_rules! impl_timer_channel {
                 <embedded_time::fraction::Fraction>::new(1, 1_000);
 
             fn try_now(&self) -> Result<embedded_time::Instant<Self>, embedded_time::clock::Error> {
+                if !*self.is_running.borrow() {
+                    return Err(embedded_time::clock::Error::NotRunning);
+                }
+
                 let ms = self.current_time();
+                match *self.last_read_clock_time.borrow() {
+                    Some(last_time) => {
+                        if ms < last_time {
+                            return Err(embedded_time::clock::Error::Unspecified);
+                        }
+                    },
+                    None => (),
+                }
+
+                self.last_read_clock_time.replace(Some(ms));
                 Ok(embedded_time::Instant::new(ms.0 as Self::T))
             }
         }
@@ -358,6 +374,8 @@ macro_rules! impl_timer_channel {
                         clock: target_clock,
                         count_down_target: None,
                         last_count_down_value: None,
+                        last_read_clock_time: RefCell::new(None),
+                        is_running: RefCell::new(false),
                     }
                 }
             }

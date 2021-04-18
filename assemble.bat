@@ -1,4 +1,4 @@
-del bin\*.o /q
+del bin\*.a /q
 
 set crate=bl602-hal
 

@@ -115,7 +115,6 @@ macro_rules! impl_timer_channel {
             clock: Hertz,
             count_down_target: Option<Milliseconds>,
             last_count_down_value: Option<Milliseconds>,
-            last_read_clock_time: RefCell<Option<Milliseconds>>,
             is_running: RefCell<bool>,
         }
 
@@ -169,6 +168,11 @@ macro_rules! impl_timer_channel {
                     let timer = unsafe { &*pac::TIMER::ptr() };
                     timer.tcer.modify(|_r, w| w.[<timer $channel _en>]().set_bit());
                     self.is_running.replace(false);
+                }
+
+                /// Check if the timer is enabled / running
+                pub fn is_enabled(&self) -> bool {
+                    *self.is_running.borrow()
                 }
 
                 /// Clear interrupt for match register 0.
@@ -313,32 +317,6 @@ macro_rules! impl_timer_channel {
             }
         }
 
-        impl embedded_time::Clock for $conf_name {
-            type T = u32;
-
-            const SCALING_FACTOR: embedded_time::rate::Fraction =
-                <embedded_time::fraction::Fraction>::new(1, 1_000);
-
-            fn try_now(&self) -> Result<embedded_time::Instant<Self>, embedded_time::clock::Error> {
-                if !*self.is_running.borrow() {
-                    return Err(embedded_time::clock::Error::NotRunning);
-                }
-
-                let ms = self.current_time();
-                match *self.last_read_clock_time.borrow() {
-                    Some(last_time) => {
-                        if ms < last_time {
-                            return Err(embedded_time::clock::Error::Unspecified);
-                        }
-                    },
-                    None => (),
-                }
-
-                self.last_read_clock_time.replace(Some(ms));
-                Ok(embedded_time::Instant::new(ms.0 as Self::T))
-            }
-        }
-
         paste! {
             impl $name {
 
@@ -374,7 +352,6 @@ macro_rules! impl_timer_channel {
                         clock: target_clock,
                         count_down_target: None,
                         last_count_down_value: None,
-                        last_read_clock_time: RefCell::new(None),
                         is_running: RefCell::new(false),
                     }
                 }

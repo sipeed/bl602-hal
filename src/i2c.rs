@@ -289,7 +289,7 @@ where
             }
             self.i2c
                 .i2c_fifo_wdata
-                .modify(|_r, w| unsafe { w.i2c_fifo_wdata().bits(*value as u32) });
+                .write(|w| unsafe { w.i2c_fifo_wdata().bits(*value as u32) });
         }
 
         while self

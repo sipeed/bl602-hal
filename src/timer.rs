@@ -176,21 +176,24 @@ macro_rules! impl_timer_channel {
                 }
 
                 /// Clear interrupt for match register 0.
+                /// TICR register is write-only, no need to preserve register contents
                 pub fn clear_match0_interrupt(&self) {
                     let timer = unsafe { &*pac::TIMER::ptr() };
-                    timer.[<ticr $channel>].modify(|_r, w| w.tclr_0().set_bit());
+                    timer.[<ticr $channel>].write(|w| w.tclr_0().set_bit());
                 }
 
                 /// Clear interrupt for match register 1.
+                /// TICR register is write-only, no need to preserve register contents
                 pub fn clear_match1_interrupt(&self) {
                     let timer = unsafe { &*pac::TIMER::ptr() };
-                    timer.[<ticr $channel>].modify(|_r, w| w.tclr_1().set_bit());
+                    timer.[<ticr $channel>].write(|w| w.tclr_1().set_bit());
                 }
 
                 /// Clear interrupt for match register 2.
+                /// TICR register is write-only, no need to preserve register contents
                 pub fn clear_match2_interrupt(&self) {
                     let timer = unsafe { &*pac::TIMER::ptr() };
-                    timer.[<ticr $channel>].modify(|_r, w| w.tclr_2().set_bit());
+                    timer.[<ticr $channel>].write(|w| w.tclr_2().set_bit());
                 }
 
                 /// Sets when the to preload.

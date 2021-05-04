@@ -292,13 +292,7 @@ where
                 .write(|w| unsafe { w.i2c_fifo_wdata().bits(*value as u32) });
         }
 
-        while self
-            .i2c
-            .i2c_bus_busy
-            .read()
-            .cr_i2c_bus_busy_clr()
-            .bit_is_set()
-        {
+        while self.i2c.i2c_bus_busy.read().sts_i2c_bus_busy().bit_is_set() {
             // wait for transfer to finish
         }
 

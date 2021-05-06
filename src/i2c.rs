@@ -185,8 +185,14 @@ where
         let fifo_config = self.i2c.i2c_fifo_config_0.read();
 
         if fifo_config.rx_fifo_overflow().bit_is_set() {
+            self.i2c
+                .i2c_fifo_config_0
+                .write(|w| w.rx_fifo_clr().set_bit());
             return Err(Error::RxOverflow);
         } else if fifo_config.rx_fifo_underflow().bit_is_set() {
+            self.i2c
+                .i2c_fifo_config_0
+                .write(|w| w.rx_fifo_clr().set_bit());
             return Err(Error::RxUnderflow);
         }
 
@@ -211,8 +217,8 @@ where
                 .set_bit()
         });
 
-        let mut timeout_countdown = self.timeout;
         for value in tmp.iter_mut() {
+            let mut timeout_countdown = self.timeout;
             while self.i2c.i2c_fifo_config_1.read().rx_fifo_cnt().bits() == 0 {
                 if timeout_countdown == 0 {
                     return Err(Error::Timeout);
@@ -249,8 +255,14 @@ where
         let fifo_config = self.i2c.i2c_fifo_config_0.read();
 
         if fifo_config.tx_fifo_overflow().bit_is_set() {
+            self.i2c
+                .i2c_fifo_config_0
+                .write(|w| w.tx_fifo_clr().set_bit());
             return Err(Error::TxOverflow);
         } else if fifo_config.tx_fifo_underflow().bit_is_set() {
+            self.i2c
+                .i2c_fifo_config_0
+                .write(|w| w.tx_fifo_clr().set_bit());
             return Err(Error::TxUnderflow);
         }
 
@@ -279,8 +291,8 @@ where
                 .set_bit()
         });
 
-        let mut timeout_countdown = self.timeout;
         for value in tmp.iter() {
+            let mut timeout_countdown = self.timeout;
             while self.i2c.i2c_fifo_config_1.read().tx_fifo_cnt().bits() == 0 {
                 if timeout_countdown == 0 {
                     return Err(Error::Timeout);
@@ -292,13 +304,7 @@ where
                 .write(|w| unsafe { w.i2c_fifo_wdata().bits(*value as u32) });
         }
 
-        while self
-            .i2c
-            .i2c_bus_busy
-            .read()
-            .cr_i2c_bus_busy_clr()
-            .bit_is_set()
-        {
+        while self.i2c.i2c_bus_busy.read().sts_i2c_bus_busy().bit_is_set() {
             // wait for transfer to finish
         }
 

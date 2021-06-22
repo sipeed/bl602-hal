@@ -10,6 +10,7 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
+          target: riscv32imac-unknown-none-elf
           override: true
           components: clippy
       - uses: actions-rs/clippy-check@v1

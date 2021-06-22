@@ -220,10 +220,13 @@ impl Strict {
         };
 
         // Enable system clock, PLL + crystal if required
-        match sysclk {
-            SysclkFreq::Rc32Mhz => glb_set_system_clk_rc32(),
-            _ => glb_set_system_clk_pll(sysclk as u32, pll_xtal_freq),
-        };
+        // omit if settings match boot defaults
+        if sysclk != SysclkFreq::Pll160Mhz || pll_xtal_freq != 40_000_000 {
+            match sysclk {
+                SysclkFreq::Rc32Mhz => glb_set_system_clk_rc32(),
+                _ => glb_set_system_clk_pll(sysclk as u32, pll_xtal_freq),
+            };
+        }
 
         // If PLL is enabled, use that for the UART base clock
         // Otherwise, use sysclk as the UART clock

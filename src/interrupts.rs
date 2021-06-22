@@ -26,9 +26,9 @@
 use riscv::register::mcause;
 
 extern "C" {
-    fn Gpio();
-    fn TimerCh0();
-    fn TimerCh1();
+    fn Gpio(trap_frame: &mut TrapFrame);
+    fn TimerCh0(trap_frame: &mut TrapFrame);
+    fn TimerCh1(trap_frame: &mut TrapFrame);
 }
 
 // see components\bl602\bl602_std\bl602_std\RISCV\Core\Include\clic.h
@@ -57,9 +57,9 @@ pub fn _setup_interrupts() {
 
     // disable all interrupts
     let e =
-        unsafe { core::slice::from_raw_parts_mut((CLIC_HART0_ADDR + CLIC_INTIE) as *mut u32, 16) };
+        unsafe { core::slice::from_raw_parts_mut((CLIC_HART0_ADDR + CLIC_INTIE) as *mut u32, 16 + 8) };
     let p =
-        unsafe { core::slice::from_raw_parts_mut((CLIC_HART0_ADDR + CLIC_INTIP) as *mut u32, 16) };
+        unsafe { core::slice::from_raw_parts_mut((CLIC_HART0_ADDR + CLIC_INTIP) as *mut u32, 16 + 8) };
 
     e.iter_mut().for_each(|v| *v = 0);
     p.iter_mut().for_each(|v| *v = 0);
@@ -72,6 +72,7 @@ pub fn _setup_interrupts() {
 /// Registers saved in trap handler
 #[doc(hidden)]
 #[allow(missing_docs)]
+#[derive(Debug, Default, Clone, Copy)]
 #[repr(C)]
 pub struct TrapFrame {
     pub ra: usize,
@@ -90,6 +91,21 @@ pub struct TrapFrame {
     pub a5: usize,
     pub a6: usize,
     pub a7: usize,
+    pub s0: usize,
+    pub s1: usize,
+    pub s2: usize,
+    pub s3: usize,
+    pub s4: usize,
+    pub s5: usize,
+    pub s6: usize,
+    pub s7: usize,
+    pub s8: usize,
+    pub s9: usize,
+    pub s10: usize,
+    pub s11: usize,
+    pub gp: usize,
+    pub tp: usize,
+    pub sp: usize,
 }
 
 /// # Safety
@@ -98,7 +114,7 @@ pub struct TrapFrame {
 #[doc(hidden)]
 #[link_section = ".trap.rust"]
 #[export_name = "_start_trap_rust_hal"]
-pub unsafe extern "C" fn start_trap_rust_hal(trap_frame: *const TrapFrame) {
+pub unsafe extern "C" fn start_trap_rust_hal(trap_frame: *mut TrapFrame) {
     extern "C" {
         pub fn _start_trap_rust(trap_frame: *const TrapFrame);
     }
@@ -115,10 +131,10 @@ pub unsafe extern "C" fn start_trap_rust_hal(trap_frame: *const TrapFrame) {
             let interrupt = Interrupt::from(interrupt_number);
 
             match interrupt {
-                Interrupt::Unknown => {}
-                Interrupt::Gpio => Gpio(),
-                Interrupt::TimerCh0 => TimerCh0(),
-                Interrupt::TimerCh1 => TimerCh1(),
+                Interrupt::Unknown => _start_trap_rust(trap_frame),
+                Interrupt::Gpio => Gpio(trap_frame.as_mut().unwrap()),
+                Interrupt::TimerCh0 => TimerCh0(trap_frame.as_mut().unwrap()),
+                Interrupt::TimerCh1 => TimerCh1(trap_frame.as_mut().unwrap()),
             };
         }
     }

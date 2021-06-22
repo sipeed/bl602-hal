@@ -15,7 +15,7 @@
 .align 6
 
 _start_trap_hal:
-    addi sp, sp, -16*REGBYTES
+    addi sp, sp, -32*REGBYTES
 
     STORE ra, 0*REGBYTES(sp)
     STORE t0, 1*REGBYTES(sp)
@@ -33,6 +33,23 @@ _start_trap_hal:
     STORE a5, 13*REGBYTES(sp)
     STORE a6, 14*REGBYTES(sp)
     STORE a7, 15*REGBYTES(sp)
+    STORE s0, 16*REGBYTES(sp)
+    STORE s1, 17*REGBYTES(sp)
+    STORE s2, 18*REGBYTES(sp)
+    STORE s3, 19*REGBYTES(sp)
+    STORE s4, 20*REGBYTES(sp)
+    STORE s5, 21*REGBYTES(sp)
+    STORE s6, 22*REGBYTES(sp)
+    STORE s7, 23*REGBYTES(sp)
+    STORE s8, 24*REGBYTES(sp)
+    STORE s9, 25*REGBYTES(sp)
+    STORE s10, 26*REGBYTES(sp)
+    STORE s11, 27*REGBYTES(sp)
+    STORE gp, 28*REGBYTES(sp)
+    STORE tp, 29*REGBYTES(sp)
+
+    addi s0, sp, 32*REGBYTES
+    STORE s0, 30*REGBYTES(sp)
 
     add a0, sp, zero
     jal ra, _start_trap_rust_hal
@@ -53,6 +70,21 @@ _start_trap_hal:
     LOAD a5, 13*REGBYTES(sp)
     LOAD a6, 14*REGBYTES(sp)
     LOAD a7, 15*REGBYTES(sp)
+    LOAD s0, 16*REGBYTES(sp)
+    LOAD s1, 17*REGBYTES(sp)
+    LOAD s2, 18*REGBYTES(sp)
+    LOAD s3, 19*REGBYTES(sp)
+    LOAD s4, 20*REGBYTES(sp)
+    LOAD s5, 21*REGBYTES(sp)
+    LOAD s6, 22*REGBYTES(sp)
+    LOAD s7, 23*REGBYTES(sp)
+    LOAD s8, 24*REGBYTES(sp)
+    LOAD s9, 25*REGBYTES(sp)
+    LOAD s10, 26*REGBYTES(sp)
+    LOAD s11, 27*REGBYTES(sp)
+    LOAD gp, 28*REGBYTES(sp)
+    LOAD tp, 29*REGBYTES(sp)
+    LOAD sp, 30*REGBYTES(sp)
 
-    addi sp, sp, 16*REGBYTES
+    # SP was restored from the original SP
     mret

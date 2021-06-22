@@ -22,6 +22,7 @@ jobs:
         with:
           profile: minimal
           toolchain: ${{ matrix.rust }}
+          target: riscv32imac-unknown-none-elf
           override: true
       - name: Run cargo check
         uses: actions-rs/cargo@v1

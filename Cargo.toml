@@ -17,9 +17,15 @@ riscv = "0.6.0"
 nb = "1.0"
 paste = "1.0"
 
+[dependencies.embedded-hal-zero]
+version = "0.2.5"
+package = "embedded-hal"
+
 [dev-dependencies]
 riscv-rt = "0.8.0"
 panic-halt = "0.2.0"
+ssd1306 = "0.6.0"
+embedded-graphics = "0.7.1"
 
 [build-dependencies]
 riscv-target = "0.1.2"

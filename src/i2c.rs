@@ -152,7 +152,7 @@ where
         I2c {
             i2c,
             pins,
-            timeout: 1255,
+            timeout: 2048,
         }
     }
 
@@ -162,7 +162,7 @@ where
 
     /// Set the timeout when waiting for fifo (rx and tx).
     /// It's not a time unit but the number of cycles to wait.
-    /// This defaults to 255
+    /// This defaults to 2048
     pub fn set_timeout(&mut self, timeout: u16) {
         self.timeout = timeout;
     }

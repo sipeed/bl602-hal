@@ -18,7 +18,7 @@ fn main() {
         let target = target.to_string();
 
         fs::copy(
-            format!("bin/{}.a", target),
+            format!("bin/trap_{}.a", target),
             out_dir.join(format!("lib{}.a", name)),
         )
         .unwrap();

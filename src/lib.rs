@@ -40,6 +40,7 @@ pub mod delay;
 pub mod gpio;
 pub mod i2c;
 pub mod interrupts;
+pub mod rtc;
 pub mod serial;
 pub mod spi;
 pub mod timer;

@@ -33,9 +33,7 @@ impl Rtc {
         self.hbn
             .rtc_time_h
             .modify(|r, w| unsafe { w.bits(r.bits() | 1 << 31) });
-        self.hbn
-            .rtc_time_l
-            .modify(|r, w| unsafe { w.bits(r.bits() & !(1 << 31)) });
+
         let h = self.hbn.rtc_time_h.read().bits();
         let l = self.hbn.rtc_time_l.read().bits();
         let ts = (h as u64) << 32 | l as u64; // in counter units

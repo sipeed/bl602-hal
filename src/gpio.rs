@@ -9,7 +9,6 @@ pub trait GlbExt {
     fn split(self) -> Parts;
 }
 
-#[allow(non_camel_case_types)]
 #[derive(Copy, Clone)]
 pub enum Event {
     /// Trigger on the falling edge
@@ -19,7 +18,7 @@ pub enum Event {
     /// Trigger while low level
     NegativeLevel = 2,
     /// Trigger while high level
-    HighLevel = 3
+    HighLevel = 3,
 }
 
 /// Extension trait to setup/enable/disable/clear/check input pins

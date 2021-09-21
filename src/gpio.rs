@@ -9,6 +9,31 @@ pub trait GlbExt {
     fn split(self) -> Parts;
 }
 
+#[derive(Copy, Clone)]
+pub enum Event {
+    /// Trigger on the falling edge
+    NegativePulse = 0,
+    /// Trigger on the rising edge
+    PositivePulse = 1,
+    /// Trigger while low level
+    NegativeLevel = 2,
+    /// Trigger while high level
+    HighLevel = 3,
+}
+
+/// Extension trait to setup/enable/disable/clear/check input pins
+pub trait InterruptPin {
+    // Is make_interrupt_source redundant?
+    //fn make_interrupt_source(&mut self, afio: &mut afio::Parts);
+    fn trigger_on_event(&mut self, event: Event);
+    fn control_asynchronous(&mut self);
+    fn control_synchronous(&mut self);
+    fn enable_interrupt(&mut self);
+    fn disable_interrupt(&mut self);
+    fn clear_interrupt_pending_bit(&mut self);
+    fn check_interrupt(&self) -> bool;
+}
+
 pub use uart_sig::*;
 
 /// UART signals
@@ -219,7 +244,7 @@ pub trait UartPin<SIG> {}
 pub use self::pin::*;
 
 macro_rules! impl_glb {
-    ($($Pini: ident: ($pini: ident, $gpio_cfgctli: ident, $UartSigi: ident, $sigi: ident, $spi_kind: ident, $i2c_kind: ident, $gpio_i: ident) ,)+) => {
+    ($($Pini: ident: ($pini: ident, $gpio_cfgctli: ident, $UartSigi: ident, $sigi: ident, $spi_kind: ident, $i2c_kind: ident, $gpio_i: ident, $gpio_int_mode_seti: ident) ,)+) => {
         impl GlbExt for pac::GLB {
             fn split(self) -> Parts {
                 Parts {
@@ -380,6 +405,65 @@ macro_rules! impl_glb {
                 }
             }
 
+            impl<MODE> InterruptPin for $Pini<Input<MODE>> {
+
+                paste::paste! {
+                    fn trigger_on_event(&mut self, event: Event) {
+                        let glb = unsafe { &*pac::GLB::ptr() };
+
+                        glb.$gpio_int_mode_seti.modify(|_, w| { w
+                                                                .[<reg_ $gpio_i _interrupt_trigger_mode>]().bits(event as u8)
+                        });
+                    }
+
+                    fn control_asynchronous(&mut self) {
+                        let glb = unsafe { &*pac::GLB::ptr() };
+
+                        glb.$gpio_int_mode_seti.modify(|_, w| { w
+                                                                .[<reg_ $gpio_i _interrupt_control_mode>]().asynchronous()
+                        });
+                    }
+
+                    fn control_synchronous(&mut self) {
+                        let glb = unsafe { &*pac::GLB::ptr() };
+
+                        glb.$gpio_int_mode_seti.modify(|_, w| { w
+                                                                .[<reg_ $gpio_i _interrupt_control_mode>]().synchronous()
+                        });
+                    }
+
+                    fn enable_interrupt(&mut self) {
+                        let glb = unsafe { &*pac::GLB::ptr() };
+
+                        glb.gpio_int_mask1.modify(|_, w| { w
+                                                           .[<reg_ $gpio_i _mask>]().unmasked()
+                        });
+                    }
+
+                    fn disable_interrupt(&mut self) {
+                        let glb = unsafe { &*pac::GLB::ptr() };
+
+                        glb.gpio_int_mask1.modify(|_, w| { w
+                                                           .[<reg_ $gpio_i _mask>]().masked()
+                        });
+                    }
+
+                    fn clear_interrupt_pending_bit(&mut self) {
+                        let glb = unsafe { &*pac::GLB::ptr() };
+
+                        glb.gpio_int_clr1.modify(|_, w| { w
+                                                          .[<reg_ $gpio_i _interrupt_clear>]().clear_bit()
+                        });
+                    }
+
+                    fn check_interrupt(&self) -> bool {
+                        let glb = unsafe { &*pac::GLB::ptr() };
+
+                        glb.gpio_int_stat1.read().[<reg_ $gpio_i _interrupt_status>]().is_set()
+                    }
+                }
+            }
+
             impl<MODE> OutputPin for $Pini<Output<MODE>> {
                 type Error = Infallible;
 
@@ -427,27 +511,27 @@ macro_rules! impl_glb {
 // There are Pin0 to Pin22, totally 23 pins
 // todo: generate macros
 impl_glb! {
-    Pin0: (pin0, gpio_cfgctl0, UartSig0, sig0, miso, scl, gpio_0),
-    Pin1: (pin1, gpio_cfgctl0, UartSig1, sig1, mosi, sda, gpio_1),
-    Pin2: (pin2, gpio_cfgctl1, UartSig2, sig2, ss, scl, gpio_2),
-    Pin3: (pin3, gpio_cfgctl1, UartSig3, sig3, sclk, sda, gpio_3),
-    Pin4: (pin4, gpio_cfgctl2, UartSig4, sig4, miso, scl, gpio_4),
-    Pin5: (pin5, gpio_cfgctl2, UartSig5, sig5, mosi, sda, gpio_5),
-    Pin6: (pin6, gpio_cfgctl3, UartSig6, sig6, ss, scl, gpio_6),
-    Pin7: (pin7, gpio_cfgctl3, UartSig7, sig7, sclk, sda, gpio_7),
-    Pin8: (pin8, gpio_cfgctl4, UartSig0, sig0, miso, scl, gpio_8),
-    Pin9: (pin9, gpio_cfgctl4, UartSig1, sig1, mosi, sda, gpio_9),
-    Pin10: (pin10, gpio_cfgctl5, UartSig2, sig2, ss, scl, gpio_10),
-    Pin11: (pin11, gpio_cfgctl5, UartSig3, sig3, sclk, sda, gpio_11),
-    Pin12: (pin12, gpio_cfgctl6, UartSig4, sig4, miso, scl, gpio_12),
-    Pin13: (pin13, gpio_cfgctl6, UartSig5, sig5, mosi, sda, gpio_13),
-    Pin14: (pin14, gpio_cfgctl7, UartSig6, sig6, ss, scl, gpio_14),
-    Pin15: (pin15, gpio_cfgctl7, UartSig7, sig7, sclk, sda, gpio_15),
-    Pin16: (pin16, gpio_cfgctl8, UartSig0, sig0, miso, scl, gpio_16),
-    Pin17: (pin17, gpio_cfgctl8, UartSig1, sig1, mosi, sda, gpio_17),
-    Pin18: (pin18, gpio_cfgctl9, UartSig2, sig2, ss, scl, gpio_18),
-    Pin19: (pin19, gpio_cfgctl9, UartSig3, sig3, sclk, sda, gpio_19),
-    Pin20: (pin20, gpio_cfgctl10, UartSig4, sig4, miso, scl, gpio_20),
-    Pin21: (pin21, gpio_cfgctl10, UartSig5, sig5, mosi, sda, gpio_21),
-    Pin22: (pin22, gpio_cfgctl11, UartSig6, sig6, ss, scl, gpio_22),
+    Pin0: (pin0, gpio_cfgctl0, UartSig0, sig0, miso, scl, gpio_0, gpio_int_mode_set1),
+    Pin1: (pin1, gpio_cfgctl0, UartSig1, sig1, mosi, sda, gpio_1, gpio_int_mode_set1),
+    Pin2: (pin2, gpio_cfgctl1, UartSig2, sig2, ss, scl, gpio_2, gpio_int_mode_set1),
+    Pin3: (pin3, gpio_cfgctl1, UartSig3, sig3, sclk, sda, gpio_3, gpio_int_mode_set1),
+    Pin4: (pin4, gpio_cfgctl2, UartSig4, sig4, miso, scl, gpio_4, gpio_int_mode_set1),
+    Pin5: (pin5, gpio_cfgctl2, UartSig5, sig5, mosi, sda, gpio_5, gpio_int_mode_set1),
+    Pin6: (pin6, gpio_cfgctl3, UartSig6, sig6, ss, scl, gpio_6, gpio_int_mode_set1),
+    Pin7: (pin7, gpio_cfgctl3, UartSig7, sig7, sclk, sda, gpio_7, gpio_int_mode_set1),
+    Pin8: (pin8, gpio_cfgctl4, UartSig0, sig0, miso, scl, gpio_8, gpio_int_mode_set1),
+    Pin9: (pin9, gpio_cfgctl4, UartSig1, sig1, mosi, sda, gpio_9, gpio_int_mode_set1),
+    Pin10: (pin10, gpio_cfgctl5, UartSig2, sig2, ss, scl, gpio_10, gpio_int_mode_set2),
+    Pin11: (pin11, gpio_cfgctl5, UartSig3, sig3, sclk, sda, gpio_11, gpio_int_mode_set2),
+    Pin12: (pin12, gpio_cfgctl6, UartSig4, sig4, miso, scl, gpio_12, gpio_int_mode_set2),
+    Pin13: (pin13, gpio_cfgctl6, UartSig5, sig5, mosi, sda, gpio_13, gpio_int_mode_set2),
+    Pin14: (pin14, gpio_cfgctl7, UartSig6, sig6, ss, scl, gpio_14, gpio_int_mode_set2),
+    Pin15: (pin15, gpio_cfgctl7, UartSig7, sig7, sclk, sda, gpio_15, gpio_int_mode_set2),
+    Pin16: (pin16, gpio_cfgctl8, UartSig0, sig0, miso, scl, gpio_16, gpio_int_mode_set2),
+    Pin17: (pin17, gpio_cfgctl8, UartSig1, sig1, mosi, sda, gpio_17, gpio_int_mode_set2),
+    Pin18: (pin18, gpio_cfgctl9, UartSig2, sig2, ss, scl, gpio_18, gpio_int_mode_set2),
+    Pin19: (pin19, gpio_cfgctl9, UartSig3, sig3, sclk, sda, gpio_19, gpio_int_mode_set2),
+    Pin20: (pin20, gpio_cfgctl10, UartSig4, sig4, miso, scl, gpio_20, gpio_int_mode_set3),
+    Pin21: (pin21, gpio_cfgctl10, UartSig5, sig5, mosi, sda, gpio_21, gpio_int_mode_set3),
+    Pin22: (pin22, gpio_cfgctl11, UartSig6, sig6, ss, scl, gpio_22, gpio_int_mode_set3),
 }

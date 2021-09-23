@@ -24,8 +24,10 @@ use embedded_hal::i2c::SevenBitAddress;
 // use embedded_hal::prelude::_embedded_hal_blocking_i2c_Write;
 use embedded_hal_zero::blocking::i2c::Read as ReadZero;
 use embedded_hal_zero::blocking::i2c::Write as WriteZero;
-use embedded_hal::i2c;
-use embedded_hal::i2c::blocking;
+use embedded_hal::i2c as i2cAlpha;
+use embedded_hal::i2c::blocking::Read as ReadAlpha;
+use embedded_hal::i2c::blocking::Write as WriteAlpha;
+// use embedded_hal::i2c::blocking;
 use embedded_time::rate::Hertz;
 
 use crate::{clock::Clocks, pac};
@@ -178,7 +180,7 @@ where
     }
 }
 
-impl<PINS> i2c::blocking::Read<i2c::SevenBitAddress> for I2c<pac::I2C, PINS>
+impl<PINS> ReadAlpha<i2cAlpha::SevenBitAddress> for I2c<pac::I2C, PINS>
 where
     PINS: Pins<pac::I2C>,
 {
@@ -186,7 +188,7 @@ where
 
     fn read(
         &mut self,
-        address: i2c::SevenBitAddress,
+        address: i2cAlpha::SevenBitAddress,
         buffer: &mut [u8],
     ) -> Result<(), Self::Error> {
         let fifo_config = self.i2c.i2c_fifo_config_0.read();
@@ -248,7 +250,7 @@ where
     }
 }
 
-impl<PINS> i2c::blocking::Write<i2c::SevenBitAddress> for I2c<pac::I2C, PINS>
+impl<PINS> WriteAlpha<i2cAlpha::SevenBitAddress> for I2c<pac::I2C, PINS>
 where
     PINS: Pins<pac::I2C>,
 {
@@ -256,7 +258,7 @@ where
 
     fn write(
         &mut self,
-        address: i2c::SevenBitAddress,
+        address: i2cAlpha::SevenBitAddress,
         buffer: &[u8],
     ) -> Result<(), Self::Error> {
         let fifo_config = self.i2c.i2c_fifo_config_0.read();
@@ -330,7 +332,7 @@ where
     type Error = Error;
 
     fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error> {
-        self.read(address, buffer)
+        ReadAlpha::read(self, address, buffer)
     }
 }
 
@@ -341,6 +343,6 @@ where
     type Error = Error;
 
     fn write(&mut self, addr: u8, bytes: &[u8]) -> Result<(), Self::Error> {
-        self.write(addr, bytes)
+        WriteAlpha::write(self,addr, bytes)
     }
 }

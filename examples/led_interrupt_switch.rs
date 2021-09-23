@@ -3,6 +3,8 @@
 
 use core::mem::MaybeUninit;
 use bl602_hal as hal;
+use embedded_hal::digital::blocking::StatefulOutputPin;
+use embedded_hal::digital::blocking::OutputPin;
 use hal::{pac, prelude::*, interrupts::*};
 use panic_halt as _;
 
@@ -28,7 +30,7 @@ fn main() -> ! {
     let mut gpio3 = parts.pin3.into_pull_down_input();
     let mut gpio5 = parts.pin5.into_pull_down_output();
 
-    gpio5.try_set_high().unwrap();
+    gpio5.set_high().unwrap();
 
     gpio3.enable_smitter();
     gpio3.trigger_on_event(hal::gpio::Event::NegativePulse);
@@ -59,13 +61,13 @@ fn Gpio(_trap_frame: &mut TrapFrame) {
     get_gpio3().disable_interrupt();
     get_gpio3().clear_interrupt_pending_bit();
 
-    let is_on = get_gpio5().try_is_set_high();
+    let is_on = get_gpio5().is_set_high();
     if let Ok(res) = is_on {
         if res {
-            get_gpio5().try_set_low().unwrap();
+            get_gpio5().set_low().unwrap();
         }
         else {
-            get_gpio5().try_set_high().unwrap();
+            get_gpio5().set_high().unwrap();
         }
     }
 

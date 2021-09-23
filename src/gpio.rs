@@ -502,7 +502,17 @@ macro_rules! impl_glb {
                 }
             }
 
-            impl<MODE> ToggleableOutputPin for $Pini<Output<MODE>> {}
+            impl<MODE> ToggleableOutputPin for $Pini<Output<MODE>> {
+                type Error = Infallible;
+                fn toggle(&mut self) -> Result<(), Self::Error> {
+                    // infallible, so unwrap_or will never be processed
+                    if self.is_set_high().unwrap_or(false) {
+                        self.set_low()
+                    } else {
+                        self.set_high()
+                    }
+                }
+            }
             )+
         }
     };

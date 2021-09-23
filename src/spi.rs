@@ -22,7 +22,9 @@
 */
 
 use bl602_pac::SPI;
-pub use embedded_hal::spi::{FullDuplex, Mode};
+pub use embedded_hal::spi::blocking::Transfer;
+pub use embedded_hal::spi::Mode;
+use embedded_hal::spi::nb::FullDuplex;
 use embedded_time::rate::Hertz;
 
 use crate::pac;
@@ -216,7 +218,7 @@ where
 {
     type Error = Error;
 
-    fn try_read(&mut self) -> nb::Result<u8, Error> {
+    fn read(&mut self) -> nb::Result<u8, Error> {
         let spi_fifo_config_0 = self.spi.spi_fifo_config_0.read();
 
         if spi_fifo_config_0.rx_fifo_overflow().bit_is_set() {
@@ -230,7 +232,7 @@ where
         }
     }
 
-    fn try_send(&mut self, data: u8) -> nb::Result<(), Self::Error> {
+    fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
         let spi_fifo_config_0 = self.spi.spi_fifo_config_0.read();
 
         if spi_fifo_config_0.tx_fifo_overflow().bit_is_set() {
@@ -249,22 +251,23 @@ where
     }
 }
 
-impl<PINS> embedded_hal::blocking::spi::transfer::Default<u8> for Spi<pac::SPI, PINS> where
-    PINS: Pins<pac::SPI>
-{
-}
+//TODO: Default marker traits are removed, must re-implement manually
+// impl<PINS> embedded_hal::blocking::spi::transfer::Default<u8> for Spi<pac::SPI, PINS> where
+//     PINS: Pins<pac::SPI>
+// {
+// }
 
-impl<PINS> embedded_hal::blocking::spi::write::Default<u8> for Spi<pac::SPI, PINS> where
-    PINS: Pins<pac::SPI>
-{
-}
+// impl<PINS> embedded_hal::blocking::spi::write::Default<u8> for Spi<pac::SPI, PINS> where
+//     PINS: Pins<pac::SPI>
+// {
+// }
 
-impl<PINS> embedded_hal::blocking::spi::write_iter::Default<u8> for Spi<pac::SPI, PINS> where
-    PINS: Pins<pac::SPI>
-{
-}
+// impl<PINS> embedded_hal::blocking::spi::write_iter::Default<u8> for Spi<pac::SPI, PINS> where
+//     PINS: Pins<pac::SPI>
+// {
+// }
 
-impl<PINS> embedded_hal::blocking::spi::transactional::Default<u8> for Spi<pac::SPI, PINS> where
-    PINS: Pins<pac::SPI>
-{
-}
+// impl<PINS> embedded_hal::blocking::spi::transactional::Default<u8> for Spi<pac::SPI, PINS> where
+//     PINS: Pins<pac::SPI>
+// {
+// }

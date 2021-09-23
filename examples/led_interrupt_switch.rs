@@ -1,18 +1,19 @@
 #![no_std]
 #![no_main]
 
-use core::mem::MaybeUninit;
 use bl602_hal as hal;
-use embedded_hal::digital::blocking::StatefulOutputPin;
+use core::mem::MaybeUninit;
 use embedded_hal::digital::blocking::OutputPin;
-use hal::{pac, prelude::*, interrupts::*};
+use embedded_hal::digital::blocking::StatefulOutputPin;
+use hal::{interrupts::*, pac, prelude::*};
 use panic_halt as _;
 
 use bl602_hal::gpio::InterruptPin;
 
-
-static mut GPIO3: MaybeUninit<hal::gpio::pin::Pin3<hal::gpio::Input<hal::gpio::PullDown>>> = MaybeUninit::uninit();
-static mut GPIO5: MaybeUninit<hal::gpio::pin::Pin5<hal::gpio::Output<hal::gpio::PullDown>>> = MaybeUninit::uninit();
+static mut GPIO3: MaybeUninit<hal::gpio::pin::Pin3<hal::gpio::Input<hal::gpio::PullDown>>> =
+    MaybeUninit::uninit();
+static mut GPIO5: MaybeUninit<hal::gpio::pin::Pin5<hal::gpio::Output<hal::gpio::PullDown>>> =
+    MaybeUninit::uninit();
 
 fn get_gpio3() -> &'static mut hal::gpio::pin::Pin3<hal::gpio::Input<hal::gpio::PullDown>> {
     unsafe { &mut *GPIO3.as_mut_ptr() }
@@ -65,8 +66,7 @@ fn Gpio(_trap_frame: &mut TrapFrame) {
     if let Ok(res) = is_on {
         if res {
             get_gpio5().set_low().unwrap();
-        }
-        else {
+        } else {
             get_gpio5().set_high().unwrap();
         }
     }

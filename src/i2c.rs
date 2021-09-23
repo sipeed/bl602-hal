@@ -22,11 +22,11 @@ use embedded_hal::i2c::SevenBitAddress;
 // use embedded_hal::blocking;
 // use embedded_hal::prelude::_embedded_hal_blocking_i2c_Read;
 // use embedded_hal::prelude::_embedded_hal_blocking_i2c_Write;
-use embedded_hal_zero::blocking::i2c::Read as ReadZero;
-use embedded_hal_zero::blocking::i2c::Write as WriteZero;
 use embedded_hal::i2c as i2cAlpha;
 use embedded_hal::i2c::blocking::Read as ReadAlpha;
 use embedded_hal::i2c::blocking::Write as WriteAlpha;
+use embedded_hal_zero::blocking::i2c::Read as ReadZero;
+use embedded_hal_zero::blocking::i2c::Write as WriteZero;
 // use embedded_hal::i2c::blocking;
 use embedded_time::rate::Hertz;
 
@@ -343,6 +343,6 @@ where
     type Error = Error;
 
     fn write(&mut self, addr: u8, bytes: &[u8]) -> Result<(), Self::Error> {
-        WriteAlpha::write(self,addr, bytes)
+        WriteAlpha::write(self, addr, bytes)
     }
 }

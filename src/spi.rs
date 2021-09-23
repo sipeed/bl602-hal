@@ -23,8 +23,8 @@
 
 use bl602_pac::SPI;
 pub use embedded_hal::spi::blocking::Transfer;
-pub use embedded_hal::spi::Mode;
 use embedded_hal::spi::nb::FullDuplex;
+pub use embedded_hal::spi::Mode;
 use embedded_time::rate::Hertz;
 
 use crate::pac;

@@ -27,7 +27,7 @@ use crate::delay::*;
 use crate::gpio::ClkCfg;
 use crate::pac;
 use core::num::NonZeroU32;
-use embedded_hal::blocking::delay::DelayUs;
+use embedded_hal::delay::blocking::DelayUs;
 use embedded_time::rate::{Extensions, Hertz};
 
 /// Internal high-speed RC oscillator frequency
@@ -367,13 +367,13 @@ fn glb_set_system_clk_div(hclkdiv: u8, bclkdiv: u8) {
     let mut delay = McycleDelay::new(system_core_clock_get());
 
     // This delay used to be 8 NOPS (1/4 us). Might need to be replaced again.
-    delay.try_delay_us(1).unwrap();
+    delay.delay_us(1).unwrap();
 
     unsafe { &*pac::GLB::ptr() }
         .clk_cfg0
         .modify(|_, w| w.reg_hclk_en().set_bit().reg_bclk_en().set_bit());
 
-    delay.try_delay_us(1).unwrap();
+    delay.delay_us(1).unwrap();
 }
 
 // This is a reference implementation of `PDS_Select_XTAL_As_PLL_Ref`.
@@ -532,7 +532,7 @@ fn pds_power_on_pll(freq: u32) {
     pds.pu_rst_clkpll
         .modify(|_, w| w.pu_clkpll_sfreg().set_bit());
 
-    delay.try_delay_us(5).unwrap();
+    delay.delay_us(5).unwrap();
 
     pds.pu_rst_clkpll.modify(|_, w| w.pu_clkpll().set_bit());
 
@@ -547,22 +547,22 @@ fn pds_power_on_pll(freq: u32) {
             .set_bit()
     });
 
-    delay.try_delay_us(5).unwrap();
+    delay.delay_us(5).unwrap();
 
     pds.pu_rst_clkpll
         .modify(|_, w| w.clkpll_sdm_reset().set_bit());
 
-    delay.try_delay_us(1).unwrap();
+    delay.delay_us(1).unwrap();
 
     pds.pu_rst_clkpll
         .modify(|_, w| w.clkpll_reset_fbdv().set_bit());
 
-    delay.try_delay_us(2).unwrap();
+    delay.delay_us(2).unwrap();
 
     pds.pu_rst_clkpll
         .modify(|_, w| w.clkpll_reset_fbdv().clear_bit());
 
-    delay.try_delay_us(1).unwrap();
+    delay.delay_us(1).unwrap();
 
     pds.pu_rst_clkpll
         .modify(|_, w| w.clkpll_sdm_reset().clear_bit());
@@ -576,7 +576,7 @@ fn aon_power_on_xtal() -> Result<(), &'static str> {
     let mut delaysrc = McycleDelay::new(system_core_clock_get());
     let mut timeout: u32 = 0;
 
-    delaysrc.try_delay_us(10).unwrap();
+    delaysrc.delay_us(10).unwrap();
 
     while unsafe { &*pac::AON::ptr() }
         .tsen
@@ -585,7 +585,7 @@ fn aon_power_on_xtal() -> Result<(), &'static str> {
         .bit_is_clear()
         && timeout < 120
     {
-        delaysrc.try_delay_us(10).unwrap();
+        delaysrc.delay_us(10).unwrap();
         timeout += 1;
     }
 
@@ -653,7 +653,7 @@ fn glb_set_system_clk_pll(target_core_clk: u32, xtal_freq: u32) {
     pds_power_on_pll_rom(xtal_freq);
 
     let mut delay = McycleDelay::new(system_core_clock_get());
-    delay.try_delay_us(55).unwrap();
+    delay.delay_us(55).unwrap();
 
     pds_enable_pll_all_clks();
 
@@ -695,7 +695,7 @@ fn glb_set_system_clk_pll(target_core_clk: u32, xtal_freq: u32) {
     let mut delay = McycleDelay::new(system_core_clock_get());
 
     // This delay used to be 8 NOPS (1/4 us). (GLB_CLK_SET_DUMMY_WAIT) Might need to be replaced again.
-    delay.try_delay_us(1).unwrap();
+    delay.delay_us(1).unwrap();
 
     // use 120Mhz PLL tap for PKA clock since we're using PLL
     // NOTE: This isn't documented in the datasheet!

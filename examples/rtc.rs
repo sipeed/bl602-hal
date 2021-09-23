@@ -41,7 +41,7 @@ fn main() -> ! {
     );
 
     // Create RTC
-    let rtc = Rtc::rtc(dp.HBN);
+    let rtc = Rtc::new(dp.HBN);
 
     loop {
         write!(

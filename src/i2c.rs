@@ -101,7 +101,7 @@ where
 
       The I2C instance supports 7 bit addressing mode.
     */
-    pub fn i2c(i2c: I2C, pins: PINS, freq: Hertz<u32>, clocks: Clocks) -> Self
+    pub fn new(i2c: I2C, pins: PINS, freq: Hertz<u32>, clocks: Clocks) -> Self
     where
         PINS: Pins<pac::I2C>,
     {

@@ -17,7 +17,7 @@ pub struct Rtc {
 
 impl Rtc {
     /// Creates and starts the RTC
-    pub fn rtc(hbn: HBN) -> Rtc {
+    pub fn new(hbn: HBN) -> Rtc {
         // clear counter
         hbn.hbn_ctl
             .modify(|r, w| unsafe { w.rtc_ctl().bits(r.rtc_ctl().bits() & 0xfe) });

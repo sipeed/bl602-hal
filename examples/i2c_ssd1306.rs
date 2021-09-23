@@ -33,7 +33,7 @@ fn main() -> ! {
 
     let scl = parts.pin4.into_i2c_scl();
     let sda = parts.pin5.into_i2c_sda();
-    let i2c = hal::i2c::I2c::i2c(dp.I2C, (scl, sda), 100_000u32.Hz(), clocks);
+    let i2c = hal::i2c::I2c::new(dp.I2C, (scl, sda), 100_000u32.Hz(), clocks);
 
     let interface = I2CDisplayInterface::new(i2c);
     let mut display = Ssd1306::new(interface, DisplaySize128x32, DisplayRotation::Rotate0)

@@ -127,7 +127,7 @@ where
 
       The frequency cannot be more than half of the spi clock frequency.
     */
-    pub fn spi(spi: SPI, pins: PINS, mode: Mode, freq: Hertz<u32>, clocks: Clocks) -> Self
+    pub fn new(spi: SPI, pins: PINS, mode: Mode, freq: Hertz<u32>, clocks: Clocks) -> Self
     where
         PINS: Pins<pac::SPI>,
     {

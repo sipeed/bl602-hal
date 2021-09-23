@@ -2,7 +2,7 @@
 use crate::clock::Clocks;
 use crate::pac;
 use core::fmt;
-use embedded_hal::prelude::_embedded_hal_serial_Write;
+use embedded_hal::serial::nb::Write;
 use embedded_time::rate::{Baud, Extensions};
 use nb::block;
 
@@ -295,7 +295,7 @@ where
     fn write_str(&mut self, s: &str) -> fmt::Result {
         s.as_bytes()
             .iter()
-            .try_for_each(|c| block!(self.try_write(*c)))
+            .try_for_each(|c| block!(self.write(*c)))
             .map_err(|_| fmt::Error)
     }
 }

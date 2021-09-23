@@ -1,7 +1,7 @@
 //! Delays
 
 use core::convert::Infallible;
-use embedded_hal::blocking::delay::{DelayMs, DelayUs};
+use embedded_hal::delay::blocking::{DelayMs, DelayUs};
 
 /// Use RISCV machine-mode cycle counter (`mcycle`) as a delay provider.
 ///
@@ -48,7 +48,7 @@ impl DelayUs<u64> for McycleDelay {
 
     /// Performs a busy-wait loop until the number of microseconds `us` has elapsed
     #[inline]
-    fn try_delay_us(&mut self, us: u64) -> Result<(), Infallible> {
+    fn delay_us(&mut self, us: u64) -> Result<(), Infallible> {
         McycleDelay::delay_cycles((us * (self.core_frequency as u64)) / 1_000_000);
 
         Ok(())
@@ -60,7 +60,7 @@ impl DelayMs<u64> for McycleDelay {
 
     /// Performs a busy-wait loop until the number of milliseconds `ms` has elapsed
     #[inline]
-    fn try_delay_ms(&mut self, ms: u64) -> Result<(), Infallible> {
+    fn delay_ms(&mut self, ms: u64) -> Result<(), Infallible> {
         McycleDelay::delay_cycles((ms * (self.core_frequency as u64)) / 1000);
 
         Ok(())

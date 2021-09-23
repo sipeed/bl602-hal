@@ -1,6 +1,6 @@
 /*!
   # Inter-Integrated Circuit (I2C) bus
-  To construct the I2C instance use the `I2c::i2c` function.
+  To construct the I2C instance use the `I2c::new` function.
   The pin parameter is a tuple containing `(scl, sda)` which should be configured via `into_i2c_scl` and `into_i2c_sda`.
 
   ## Initialisation example

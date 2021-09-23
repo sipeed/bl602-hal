@@ -4,7 +4,7 @@
 
   ## Initialisation example
   ```rust
-    let rtc = Rtc::rtc(dp.HBN);
+    let rtc = Rtc::new(dp.HBN);
   ```
 */
 

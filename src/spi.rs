@@ -1,6 +1,6 @@
 /*!
   # Serial Peripheral Interface
-  To construct the SPI instances, use the `Spi::spi` function.
+  To construct the SPI instances, use the `Spi::new` function.
   The pin parameter is a tuple containing `(miso, mosi, cs, sck)` which should be configured via `into_spi_miso, into_spi_mosi, into_spi_ss, into_spi_sclk`.
 
   CS is optional - so you can also pass a tuple containing `(miso, mosi, sck)`
@@ -11,7 +11,7 @@
     let ss = parts.pin2.into_spi_ss();
     let sclk = parts.pin3.into_spi_sclk();
 
-    let mut spi = hal::spi::Spi::spi(
+    let mut spi = hal::spi::Spi::new(
         dp.SPI,
         (miso, mosi, ss, sclk),
         embedded_hal::spi::MODE_0,

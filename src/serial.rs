@@ -251,10 +251,10 @@ where
     }
 }
 
-impl<PINS> embedded_hal::serial::Write<u8> for Serial<pac::UART, PINS> {
+impl<PINS> embedded_hal::serial::nb::Write<u8> for Serial<pac::UART, PINS> {
     type Error = Error;
 
-    fn try_write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
+    fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
         // If there's no room to write a byte or more to the FIFO, return WouldBlock
         if self.uart.uart_fifo_config_1.read().tx_fifo_cnt().bits() == 0 {
             Err(nb::Error::WouldBlock)
@@ -266,7 +266,7 @@ impl<PINS> embedded_hal::serial::Write<u8> for Serial<pac::UART, PINS> {
         }
     }
 
-    fn try_flush(&mut self) -> nb::Result<(), Self::Error> {
+    fn flush(&mut self) -> nb::Result<(), Self::Error> {
         // If we're still transmitting or have data in our 32 byte FIFO, return WouldBlock
         if self.uart.uart_fifo_config_1.read().tx_fifo_cnt().bits() != 32
             || self.uart.uart_status.read().sts_utx_bus_busy().bit_is_set()
@@ -278,10 +278,10 @@ impl<PINS> embedded_hal::serial::Write<u8> for Serial<pac::UART, PINS> {
     }
 }
 
-impl<PINS> embedded_hal::serial::Read<u8> for Serial<pac::UART, PINS> {
+impl<PINS> embedded_hal::serial::nb::Read<u8> for Serial<pac::UART, PINS> {
     type Error = Error;
 
-    fn try_read(&mut self) -> nb::Result<u8, Self::Error> {
+    fn read(&mut self) -> nb::Result<u8, Self::Error> {
         let ans = self.uart.uart_fifo_rdata.read().bits();
 
         Ok((ans & 0xff) as u8)
@@ -290,7 +290,7 @@ impl<PINS> embedded_hal::serial::Read<u8> for Serial<pac::UART, PINS> {
 
 impl<UART, PINS> fmt::Write for Serial<UART, PINS>
 where
-    Serial<UART, PINS>: embedded_hal::serial::Write<u8>,
+    Serial<UART, PINS>: embedded_hal::serial::nb::Write<u8>,
 {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         s.as_bytes()

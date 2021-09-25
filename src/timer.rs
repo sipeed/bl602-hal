@@ -277,12 +277,12 @@ macro_rules! impl_timer_channel {
             }
         }
 
-        impl embedded_hal::timer::CountDown for $conf_name {
+        impl embedded_hal::timer::nb::CountDown for $conf_name {
             type Error = CountDownError;
 
             type Time = Milliseconds;
 
-            fn try_start<T>(&mut self, count: T) -> Result<(), Self::Error>
+            fn start<T>(&mut self, count: T) -> Result<(), Self::Error>
             where
                 T: Into<Self::Time>,
             {
@@ -291,7 +291,7 @@ macro_rules! impl_timer_channel {
                 Ok(())
             }
 
-            fn try_wait(&mut self) -> nb::Result<(), Self::Error> {
+            fn wait(&mut self) -> nb::Result<(), Self::Error> {
                 match self.count_down_target {
                     Some(millis) => {
                         let current_time = self.current_time();

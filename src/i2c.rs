@@ -1,6 +1,6 @@
 /*!
   # Inter-Integrated Circuit (I2C) bus
-  To construct the I2C instance use the `I2c::i2c` function.
+  To construct the I2C instance use the `I2c::new` function.
   The pin parameter is a tuple containing `(scl, sda)` which should be configured via `into_i2c_scl` and `into_i2c_sda`.
 
   ## Initialisation example
@@ -18,9 +18,9 @@
 */
 
 use bl602_pac::I2C;
-use embedded_hal::blocking;
-use embedded_hal::prelude::_embedded_hal_blocking_i2c_Read;
-use embedded_hal::prelude::_embedded_hal_blocking_i2c_Write;
+use embedded_hal::i2c as i2cAlpha;
+use embedded_hal::i2c::blocking::Read as ReadAlpha;
+use embedded_hal::i2c::blocking::Write as WriteAlpha;
 use embedded_hal_zero::blocking::i2c::Read as ReadZero;
 use embedded_hal_zero::blocking::i2c::Write as WriteZero;
 use embedded_time::rate::Hertz;
@@ -101,7 +101,7 @@ where
 
       The I2C instance supports 7 bit addressing mode.
     */
-    pub fn i2c(i2c: I2C, pins: PINS, freq: Hertz<u32>, clocks: Clocks) -> Self
+    pub fn new(i2c: I2C, pins: PINS, freq: Hertz<u32>, clocks: Clocks) -> Self
     where
         PINS: Pins<pac::I2C>,
     {
@@ -175,15 +175,15 @@ where
     }
 }
 
-impl<PINS> blocking::i2c::Read<blocking::i2c::SevenBitAddress> for I2c<pac::I2C, PINS>
+impl<PINS> ReadAlpha<i2cAlpha::SevenBitAddress> for I2c<pac::I2C, PINS>
 where
     PINS: Pins<pac::I2C>,
 {
     type Error = Error;
 
-    fn try_read(
+    fn read(
         &mut self,
-        address: blocking::i2c::SevenBitAddress,
+        address: i2cAlpha::SevenBitAddress,
         buffer: &mut [u8],
     ) -> Result<(), Self::Error> {
         let fifo_config = self.i2c.i2c_fifo_config_0.read();
@@ -245,15 +245,15 @@ where
     }
 }
 
-impl<PINS> blocking::i2c::Write<blocking::i2c::SevenBitAddress> for I2c<pac::I2C, PINS>
+impl<PINS> WriteAlpha<i2cAlpha::SevenBitAddress> for I2c<pac::I2C, PINS>
 where
     PINS: Pins<pac::I2C>,
 {
     type Error = Error;
 
-    fn try_write(
+    fn write(
         &mut self,
-        address: blocking::i2c::SevenBitAddress,
+        address: i2cAlpha::SevenBitAddress,
         buffer: &[u8],
     ) -> Result<(), Self::Error> {
         let fifo_config = self.i2c.i2c_fifo_config_0.read();
@@ -327,7 +327,7 @@ where
     type Error = Error;
 
     fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error> {
-        self.try_read(address, buffer)
+        ReadAlpha::read(self, address, buffer)
     }
 }
 
@@ -338,6 +338,6 @@ where
     type Error = Error;
 
     fn write(&mut self, addr: u8, bytes: &[u8]) -> Result<(), Self::Error> {
-        self.try_write(addr, bytes)
+        WriteAlpha::write(self, addr, bytes)
     }
 }

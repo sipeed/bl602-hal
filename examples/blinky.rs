@@ -2,6 +2,8 @@
 #![no_main]
 
 use bl602_hal as hal;
+use embedded_hal::delay::blocking::DelayMs;
+use embedded_hal::digital::blocking::OutputPin;
 use hal::{
     clock::{Strict, SysclkFreq, UART_PLL_FREQ},
     pac,
@@ -27,10 +29,10 @@ fn main() -> ! {
     let mut d = bl602_hal::delay::McycleDelay::new(clocks.sysclk().0);
 
     loop {
-        gpio5.try_set_high().unwrap();
-        d.try_delay_ms(1000).unwrap();
+        gpio5.set_high().unwrap();
+        d.delay_ms(1000).unwrap();
 
-        gpio5.try_set_low().unwrap();
-        d.try_delay_ms(1000).unwrap();
+        gpio5.set_low().unwrap();
+        d.delay_ms(1000).unwrap();
     }
 }

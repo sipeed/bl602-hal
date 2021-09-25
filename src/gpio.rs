@@ -280,7 +280,7 @@ macro_rules! impl_glb {
         pub mod pin {
             use core::marker::PhantomData;
             use core::convert::Infallible;
-            use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin, toggleable};
+            use embedded_hal::digital::blocking::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
 
             use crate::pac;
             use super::*;
@@ -391,13 +391,13 @@ macro_rules! impl_glb {
                 type Error = Infallible;
 
                 paste::paste! {
-                    fn try_is_high(&self) -> Result<bool, Self::Error> {
+                    fn is_high(&self) -> Result<bool, Self::Error> {
                         let glb = unsafe { &*pac::GLB::ptr() };
 
                         Ok(glb.gpio_cfgctl30.read().[<reg_ $gpio_i _i>]().bit_is_set())
                     }
 
-                    fn try_is_low(&self) -> Result<bool, Self::Error> {
+                    fn is_low(&self) -> Result<bool, Self::Error> {
                         let glb = unsafe { &*pac::GLB::ptr() };
 
                         Ok(glb.gpio_cfgctl30.read().[<reg_ $gpio_i _i>]().bit_is_clear())
@@ -468,7 +468,7 @@ macro_rules! impl_glb {
                 type Error = Infallible;
 
                 paste::paste! {
-                    fn try_set_high(&mut self) -> Result<(), Self::Error> {
+                    fn set_high(&mut self) -> Result<(), Self::Error> {
                         let glb = unsafe { &*pac::GLB::ptr() };
 
                         glb.gpio_cfgctl32.modify(|_, w| w.[<reg_ $gpio_i _o>]().set_bit());
@@ -476,7 +476,7 @@ macro_rules! impl_glb {
                         Ok(())
                     }
 
-                    fn try_set_low(&mut self) -> Result<(), Self::Error> {
+                    fn set_low(&mut self) -> Result<(), Self::Error> {
                         let glb = unsafe { &*pac::GLB::ptr() };
 
                         glb.gpio_cfgctl32.modify(|_, w| w.[<reg_ $gpio_i _o>]().clear_bit());
@@ -488,13 +488,13 @@ macro_rules! impl_glb {
 
             impl<MODE> StatefulOutputPin for $Pini<Output<MODE>> {
                 paste::paste! {
-                    fn try_is_set_high(&self) -> Result<bool, Self::Error> {
+                    fn is_set_high(&self) -> Result<bool, Self::Error> {
                         let glb = unsafe { &*pac::GLB::ptr() };
 
                         Ok(glb.gpio_cfgctl32.read().[<reg_ $gpio_i _o>]().bit_is_set())
                     }
 
-                    fn try_is_set_low(&self) -> Result<bool, Self::Error> {
+                    fn is_set_low(&self) -> Result<bool, Self::Error> {
                         let glb = unsafe { &*pac::GLB::ptr() };
 
                         Ok(glb.gpio_cfgctl32.read().[<reg_ $gpio_i _o>]().bit_is_clear())
@@ -502,7 +502,17 @@ macro_rules! impl_glb {
                 }
             }
 
-            impl<MODE> toggleable::Default for $Pini<Output<MODE>> {}
+            impl<MODE> ToggleableOutputPin for $Pini<Output<MODE>> {
+                type Error = Infallible;
+                fn toggle(&mut self) -> Result<(), Self::Error> {
+                    // infallible, so unwrap_or will never be processed
+                    if self.is_set_high().unwrap_or(false) {
+                        self.set_low()
+                    } else {
+                        self.set_high()
+                    }
+                }
+            }
             )+
         }
     };

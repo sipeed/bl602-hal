@@ -1,6 +1,6 @@
 /*!
   # Serial Peripheral Interface
-  To construct the SPI instances, use the `Spi::spi` function.
+  To construct the SPI instances, use the `Spi::new` function.
   The pin parameter is a tuple containing `(miso, mosi, cs, sck)` which should be configured via `into_spi_miso, into_spi_mosi, into_spi_ss, into_spi_sclk`.
 
   CS is optional - so you can also pass a tuple containing `(miso, mosi, sck)`
@@ -11,7 +11,7 @@
     let ss = parts.pin2.into_spi_ss();
     let sclk = parts.pin3.into_spi_sclk();
 
-    let mut spi = hal::spi::Spi::spi(
+    let mut spi = hal::spi::Spi::new(
         dp.SPI,
         (miso, mosi, ss, sclk),
         embedded_hal::spi::MODE_0,
@@ -22,7 +22,9 @@
 */
 
 use bl602_pac::SPI;
-pub use embedded_hal::spi::{FullDuplex, Mode};
+pub use embedded_hal::spi::blocking::Transfer;
+use embedded_hal::spi::nb::FullDuplex;
+pub use embedded_hal::spi::Mode;
 use embedded_time::rate::Hertz;
 
 use crate::pac;
@@ -125,7 +127,7 @@ where
 
       The frequency cannot be more than half of the spi clock frequency.
     */
-    pub fn spi(spi: SPI, pins: PINS, mode: Mode, freq: Hertz<u32>, clocks: Clocks) -> Self
+    pub fn new(spi: SPI, pins: PINS, mode: Mode, freq: Hertz<u32>, clocks: Clocks) -> Self
     where
         PINS: Pins<pac::SPI>,
     {
@@ -216,7 +218,7 @@ where
 {
     type Error = Error;
 
-    fn try_read(&mut self) -> nb::Result<u8, Error> {
+    fn read(&mut self) -> nb::Result<u8, Error> {
         let spi_fifo_config_0 = self.spi.spi_fifo_config_0.read();
 
         if spi_fifo_config_0.rx_fifo_overflow().bit_is_set() {
@@ -230,7 +232,7 @@ where
         }
     }
 
-    fn try_send(&mut self, data: u8) -> nb::Result<(), Self::Error> {
+    fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
         let spi_fifo_config_0 = self.spi.spi_fifo_config_0.read();
 
         if spi_fifo_config_0.tx_fifo_overflow().bit_is_set() {
@@ -249,22 +251,23 @@ where
     }
 }
 
-impl<PINS> embedded_hal::blocking::spi::transfer::Default<u8> for Spi<pac::SPI, PINS> where
-    PINS: Pins<pac::SPI>
-{
-}
+//TODO: Default marker traits are removed, must re-implement manually
+// impl<PINS> embedded_hal::blocking::spi::transfer::Default<u8> for Spi<pac::SPI, PINS> where
+//     PINS: Pins<pac::SPI>
+// {
+// }
 
-impl<PINS> embedded_hal::blocking::spi::write::Default<u8> for Spi<pac::SPI, PINS> where
-    PINS: Pins<pac::SPI>
-{
-}
+// impl<PINS> embedded_hal::blocking::spi::write::Default<u8> for Spi<pac::SPI, PINS> where
+//     PINS: Pins<pac::SPI>
+// {
+// }
 
-impl<PINS> embedded_hal::blocking::spi::write_iter::Default<u8> for Spi<pac::SPI, PINS> where
-    PINS: Pins<pac::SPI>
-{
-}
+// impl<PINS> embedded_hal::blocking::spi::write_iter::Default<u8> for Spi<pac::SPI, PINS> where
+//     PINS: Pins<pac::SPI>
+// {
+// }
 
-impl<PINS> embedded_hal::blocking::spi::transactional::Default<u8> for Spi<pac::SPI, PINS> where
-    PINS: Pins<pac::SPI>
-{
-}
+// impl<PINS> embedded_hal::blocking::spi::transactional::Default<u8> for Spi<pac::SPI, PINS> where
+//     PINS: Pins<pac::SPI>
+// {
+// }

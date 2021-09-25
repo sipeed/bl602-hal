@@ -3,6 +3,7 @@
 
 use bl602_hal as hal;
 use core::fmt::Write;
+use embedded_hal::delay::blocking::DelayMs;
 use hal::{
     clock::{Strict, SysclkFreq, UART_PLL_FREQ},
     pac,
@@ -43,6 +44,6 @@ fn main() -> ! {
 
     loop {
         serial.write_str("Hello Rust\r\n").ok();
-        d.try_delay_ms(1000).unwrap();
+        d.delay_ms(1000).unwrap();
     }
 }

@@ -2,7 +2,8 @@
 use crate::clock::Clocks;
 use crate::pac;
 use core::fmt;
-use embedded_hal::serial::nb::Write;
+use embedded_hal::serial::nb::Write as WriteOne;
+use embedded_hal::serial::nb::Read as ReadOne;
 use embedded_time::rate::{Baud, Extensions};
 use nb::block;
 
@@ -285,6 +286,26 @@ impl<PINS> embedded_hal::serial::nb::Read<u8> for Serial<pac::UART, PINS> {
         let ans = self.uart.uart_fifo_rdata.read().bits();
 
         Ok((ans & 0xff) as u8)
+    }
+}
+
+impl<PINS> embedded_hal_zero::serial::Write<u8> for Serial<pac::UART, PINS> {
+    type Error = Error;
+
+    fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
+        WriteOne::write(self, word)
+    }
+
+    fn flush(&mut self) -> nb::Result<(), Self::Error> {
+        WriteOne::flush(self)
+    }
+}
+
+impl<PINS> embedded_hal_zero::serial::Read<u8> for Serial<pac::UART, PINS> {
+    type Error = Error;
+
+    fn read(&mut self) -> nb::Result<u8, Self::Error> {
+        ReadOne::read(self)
     }
 }
 

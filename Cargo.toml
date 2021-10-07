@@ -20,6 +20,7 @@ paste = "1.0"
 [dependencies.embedded-hal-zero]
 version = "0.2.5"
 package = "embedded-hal"
+features = ["unproven"]
 
 [dev-dependencies]
 riscv-rt = "0.8.0"

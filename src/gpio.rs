@@ -281,9 +281,32 @@ macro_rules! impl_glb {
             use core::marker::PhantomData;
             use core::convert::Infallible;
             use embedded_hal::digital::blocking::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
-
+            use embedded_hal_zero::digital::v2::{
+                InputPin as InputPinZero,
+                OutputPin as OutputPinZero,
+                StatefulOutputPin as StatefulOutputPinZero,
+                ToggleableOutputPin as ToggleableOutputPinZero
+            };
             use crate::pac;
             use super::*;
+
+            /// Simple implementation of InputPin trait to use within EH0 and EH1 impls without name conflicts
+            trait InternalInputPinImpl {
+                fn is_high_inner(&self) -> bool;
+                fn is_low_inner(&self) -> bool;
+            }
+
+            /// Simple implementation of OutputPin trait to use within EH0 and EH1 impls without name conflicts
+            trait InternalOutputPinImp {
+                fn set_high_inner(&self);
+                fn set_low_inner(&self);
+            }
+
+            /// Simple implementation of StatefulOutputPin trait to use within EH0 and EH1 impls without name conflicts
+            trait InternalStatefulOutputImp {
+                fn is_output_high_inner(&self) -> bool;
+                fn is_output_low_inner(&self) -> bool;
+            }
 
             $(
             /// Pin
@@ -387,21 +410,72 @@ macro_rules! impl_glb {
 
             impl UartPin<$UartSigi> for $Pini<Uart> {}
 
+            impl<MODE> InternalInputPinImpl for $Pini<Input<MODE>> {
+                paste::paste! {
+                    fn is_high_inner(&self) -> bool {
+                        let glb = unsafe { &*pac::GLB::ptr() };
+                        glb.gpio_cfgctl30.read().[<reg_ $gpio_i _i>]().bit_is_set()
+                    }
+                }
+                paste::paste! {
+                    fn is_low_inner(&self) -> bool {
+                        let glb = unsafe { &*pac::GLB::ptr() };
+                        glb.gpio_cfgctl30.read().[<reg_ $gpio_i _i>]().bit_is_clear()
+                    }
+                }
+            }
+
+            impl<MODE> InternalOutputPinImp for $Pini<Output<MODE>> {
+                paste::paste! {
+                    fn set_high_inner(&self) {
+                        let glb = unsafe { &*pac::GLB::ptr() };
+                        glb.gpio_cfgctl32.modify(|_, w| w.[<reg_ $gpio_i _o>]().set_bit())
+                    }
+                }
+                paste::paste! {
+                    fn set_low_inner(&self)  {
+                        let glb = unsafe { &*pac::GLB::ptr() };
+                        glb.gpio_cfgctl32.modify(|_, w| w.[<reg_ $gpio_i _o>]().clear_bit())
+                    }
+                }
+            }
+
+            impl<MODE> InternalStatefulOutputImp for $Pini<Output<MODE>> {
+                paste::paste! {
+                    fn is_output_high_inner(&self) -> bool {
+                        let glb = unsafe { &*pac::GLB::ptr() };
+                        glb.gpio_cfgctl32.read().[<reg_ $gpio_i _o>]().bit_is_set()
+                    }
+
+                    fn is_output_low_inner(& self) -> bool {
+                        let glb = unsafe { &*pac::GLB::ptr() };
+                        glb.gpio_cfgctl32.read().[<reg_ $gpio_i _o>]().bit_is_clear()
+                    }
+                }
+            }
+
+
             impl<MODE> InputPin for $Pini<Input<MODE>> {
                 type Error = Infallible;
 
-                paste::paste! {
-                    fn is_high(&self) -> Result<bool, Self::Error> {
-                        let glb = unsafe { &*pac::GLB::ptr() };
+                fn is_high(&self) -> Result<bool, Self::Error> {
+                    Ok(self.is_high_inner())
+                }
 
-                        Ok(glb.gpio_cfgctl30.read().[<reg_ $gpio_i _i>]().bit_is_set())
-                    }
+                fn is_low(&self) -> Result<bool, Self::Error> {
+                    Ok(self.is_low_inner())
+                }
+            }
 
-                    fn is_low(&self) -> Result<bool, Self::Error> {
-                        let glb = unsafe { &*pac::GLB::ptr() };
+            impl<MODE> InputPinZero for $Pini<Input<MODE>> {
+                type Error = Infallible;
 
-                        Ok(glb.gpio_cfgctl30.read().[<reg_ $gpio_i _i>]().bit_is_clear())
-                    }
+                fn is_high(&self) -> Result<bool, Self::Error> {
+                    Ok(self.is_high_inner())
+                }
+
+                fn is_low(&self) -> Result<bool, Self::Error> {
+                    Ok(self.is_low_inner())
                 }
             }
 
@@ -464,55 +538,82 @@ macro_rules! impl_glb {
                 }
             }
 
+
             impl<MODE> OutputPin for $Pini<Output<MODE>> {
                 type Error = Infallible;
 
-                paste::paste! {
-                    fn set_high(&mut self) -> Result<(), Self::Error> {
-                        let glb = unsafe { &*pac::GLB::ptr() };
+                fn set_high(&mut self) -> Result<(), Self::Error> {
+                    self.set_high_inner();
+                    Ok(())
+                }
 
-                        glb.gpio_cfgctl32.modify(|_, w| w.[<reg_ $gpio_i _o>]().set_bit());
+                fn set_low(&mut self) -> Result<(), Self::Error> {
+                    self.set_low_inner();
+                    Ok(())
+                }
+            }
 
-                        Ok(())
-                    }
+            impl<MODE> OutputPinZero for $Pini<Output<MODE>> {
+                type Error = Infallible;
 
-                    fn set_low(&mut self) -> Result<(), Self::Error> {
-                        let glb = unsafe { &*pac::GLB::ptr() };
+                fn set_high(&mut self) -> Result<(), Self::Error> {
+                    self.set_high_inner();
+                    Ok(())
+                }
 
-                        glb.gpio_cfgctl32.modify(|_, w| w.[<reg_ $gpio_i _o>]().clear_bit());
-
-                        Ok(())
-                    }
+                fn set_low(&mut self) -> Result<(), Self::Error> {
+                    self.set_low_inner();
+                    Ok(())
                 }
             }
 
             impl<MODE> StatefulOutputPin for $Pini<Output<MODE>> {
-                paste::paste! {
-                    fn is_set_high(&self) -> Result<bool, Self::Error> {
-                        let glb = unsafe { &*pac::GLB::ptr() };
+                fn is_set_high(&self) -> Result<bool, Self::Error> {
+                    Ok(self.is_output_high_inner())
+                }
 
-                        Ok(glb.gpio_cfgctl32.read().[<reg_ $gpio_i _o>]().bit_is_set())
-                    }
-
-                    fn is_set_low(&self) -> Result<bool, Self::Error> {
-                        let glb = unsafe { &*pac::GLB::ptr() };
-
-                        Ok(glb.gpio_cfgctl32.read().[<reg_ $gpio_i _o>]().bit_is_clear())
-                    }
+                fn is_set_low(&self) -> Result<bool, Self::Error> {
+                    Ok(self.is_output_low_inner())
                 }
             }
+
+            impl<MODE> StatefulOutputPinZero for $Pini<Output<MODE>> {
+                fn is_set_high(&self) -> Result<bool, Self::Error> {
+                    Ok(self.is_output_high_inner())
+                }
+
+                fn is_set_low(&self) -> Result<bool, Self::Error> {
+                    Ok(self.is_output_low_inner())
+                }
+            }
+
 
             impl<MODE> ToggleableOutputPin for $Pini<Output<MODE>> {
                 type Error = Infallible;
+
                 fn toggle(&mut self) -> Result<(), Self::Error> {
-                    // infallible, so unwrap_or will never be processed
-                    if self.is_set_high().unwrap_or(false) {
-                        self.set_low()
+                    if self.is_output_high_inner() {
+                        self.set_low_inner()
                     } else {
-                        self.set_high()
+                        self.set_high_inner()
                     }
+                    Ok(())
                 }
             }
+
+            impl<MODE> ToggleableOutputPinZero for $Pini<Output<MODE>> {
+                type Error = Infallible;
+
+                fn toggle(&mut self) -> Result<(), Self::Error> {
+                    if self.is_output_high_inner() {
+                        self.set_low_inner()
+                    } else {
+                        self.set_high_inner()
+                    }
+                    Ok(())
+                }
+            }
+
             )+
         }
     };

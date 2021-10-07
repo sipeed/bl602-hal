@@ -283,9 +283,13 @@ impl<PINS> embedded_hal::serial::nb::Read<u8> for Serial<pac::UART, PINS> {
     type Error = Error;
 
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
-        let ans = self.uart.uart_fifo_rdata.read().bits();
-
-        Ok((ans & 0xff) as u8)
+        if self.uart.uart_fifo_config_1.read().rx_fifo_cnt().bits() == 0 {
+            Err(nb::Error::WouldBlock)
+        }
+        else {
+            let ans = self.uart.uart_fifo_rdata.read().bits();
+            Ok((ans & 0xff) as u8)
+        }
     }
 }
 

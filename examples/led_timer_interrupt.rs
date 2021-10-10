@@ -18,7 +18,7 @@ use core::cell::RefCell;
 use core::ops::DerefMut;
 use embedded_hal::delay::blocking::DelayMs;
 use embedded_hal::digital::blocking::{OutputPin, ToggleableOutputPin};
-use embedded_time::duration::Milliseconds;
+use embedded_time::{duration::*, rate::*};
 use hal::{
     clock::{Strict, SysclkFreq},
     gpio::{Output, PullDown},
@@ -66,20 +66,21 @@ fn main() -> ! {
     let timers = dp.TIMER.split();
     let timer_ch0 = timers
         .channel0
-        .set_clock_source(ClockSource::Clock1Khz, 1_000_u32.Hz());
+        .set_clock_source(ClockSource::Fclk(&clocks), 160_000_000_u32.Hz());
 
     // Set up Match0 which we will use to control the blue LED:
+    // Note that you can use any embedded_time::duration as a time value in these set functions.
     timer_ch0.enable_match0_interrupt();
-    timer_ch0.set_match0(Milliseconds::new(1500_u32)); //toggles blue every 1500ms
+    timer_ch0.set_match0(1500_u32.milliseconds()); //toggles blue every 1500ms
 
     // Then set up Match1 and Match2 which we will use to control the green LED:
     timer_ch0.enable_match1_interrupt();
-    timer_ch0.set_match1(Milliseconds::new(500_u32)); // turns green on after 500ms of a cycle
+    timer_ch0.set_match1(500_000_000_u32.nanoseconds()); // turns green on after 500,000,000ns of a cycle
     timer_ch0.enable_match2_interrupt();
-    timer_ch0.set_match2(Milliseconds::new(1000_u32)); //turns green back off after 1000ms
+    timer_ch0.set_match2(1_u32.seconds()); //turns green back off after 1s
 
     // Use the Match0 interrupt as the trigger to reset the counter value to the preload value:
-    timer_ch0.set_preload_value(Milliseconds::new(0));
+    timer_ch0.set_preload_value(0.microseconds());
     timer_ch0.set_preload(hal::timer::Preload::PreloadMatchComparator0);
 
     // Finally, remember to enable the timer channel so the interrupts will function:

@@ -53,7 +53,7 @@ pub enum ClockSource<'a> {
 }
 
 impl<'a> ClockSource<'a> {
-    fn tccr_value(&self) -> u8 {
+    pub fn tccr_value(&self) -> u8 {
         match self {
             ClockSource::Fclk(_) => 0,
             ClockSource::Rc32Khz => 1,
@@ -62,7 +62,7 @@ impl<'a> ClockSource<'a> {
         }
     }
 
-    fn hertz(&self) -> Hertz {
+    pub fn hertz(&self) -> Hertz {
         match self {
             ClockSource::Fclk(clocks) => clocks.sysclk(),
             ClockSource::Rc32Khz => 32_000.Hz(),
@@ -101,10 +101,14 @@ pub struct TimerChannel0 {}
 /// Timer Channel 1
 pub struct TimerChannel1 {}
 
+/// Watchdog Timer
+pub struct TimerWatchdog {}
+
 /// Timers obtained from [TIMER.split](bl602_pac::Peripherals::TIMER)
 pub struct Timers {
     pub channel0: TimerChannel0,
     pub channel1: TimerChannel1,
+    pub watchdog: TimerWatchdog,
 }
 
 macro_rules! impl_timer_channel {
@@ -382,6 +386,7 @@ impl TimerExt for TIMER {
         Timers {
             channel0: TimerChannel0 {},
             channel1: TimerChannel1 {},
+            watchdog: TimerWatchdog {},
         }
     }
 }

@@ -1,9 +1,12 @@
 /*!
   # Timer
-  The chip has two 32-bit counters, each of which can independently control and configure its parameters and clock frequency
+  The chip has two 32-bit counters, each of which can independently control and configure its parameters and clock frequency.
 
   ## Example
   ```rust
+    use bl602_hal::timer::ClockSource;
+    use embedded_time::{duration::*, rate::*};
+
     let timers = dp.TIMER.split();
 
     let ch0 = timers
@@ -113,8 +116,8 @@ macro_rules! impl_timer_channel {
         /// A configured timer channel ready to use.
         pub struct $conf_name {
             clock: Hertz,
-            count_down_target: Option<Milliseconds>,
-            last_count_down_value: Option<Milliseconds>,
+            count_down_target: Option<Nanoseconds::<u64>>,
+            last_count_down_value: Option<Nanoseconds::<u64>>,
             is_running: RefCell<bool>,
         }
 
@@ -228,17 +231,17 @@ macro_rules! impl_timer_channel {
                     timer.[<tmr $channel _2>].modify(|_r, w| unsafe { w.tmr().bits(time) });
                 }
 
-                // Current counter value in raw ticks.
+                /// Current counter value in raw ticks.
                 pub fn current_ticks(&self) -> u32 {
                     let timer = unsafe { &*pac::TIMER::ptr() };
                     timer.[<tcr $channel>].read().bits()
                 }
 
-                // Current counter value in milliseconds.
-                pub fn current_time(&self) -> Milliseconds {
+                /// Current counter value in nanoseconds.
+                pub fn current_time(&self) -> Nanoseconds::<u64> {
                     let timer = unsafe { &*pac::TIMER::ptr() };
                     let ticks = timer.[<tcr $channel>].read().bits() as u64;
-                    Milliseconds::new( (ticks as u64 * 1000u64 / self.clock.0 as u64) as u32)
+                    Nanoseconds::<u64>::new( (ticks as u64 * 1_000_000_000_u64 / self.clock.0 as u64) )
                 }
 
                 /// Will only become true if `enable_match0_interrupt` is active
@@ -284,23 +287,25 @@ macro_rules! impl_timer_channel {
         impl embedded_hal::timer::nb::CountDown for $conf_name {
             type Error = CountDownError;
 
-            type Time = Milliseconds;
+            type Time = Nanoseconds::<u64>;
 
             fn start<T>(&mut self, count: T) -> Result<(), Self::Error>
             where
                 T: Into<Self::Time>,
             {
-                self.count_down_target = Some(Milliseconds(self.current_time().0 + count.into().0));
+                self.count_down_target = Some(
+                    Nanoseconds::<u64>::new(self.current_time().0 + count.into().0)
+                );
                 self.last_count_down_value = None;
                 Ok(())
             }
 
             fn wait(&mut self) -> nb::Result<(), Self::Error> {
                 match self.count_down_target {
-                    Some(millis) => {
+                    Some(nanos) => {
                         let current_time = self.current_time();
 
-                        if current_time >= millis {
+                        if current_time >= nanos {
                             Ok(())
                         } else {
                             match self.last_count_down_value {

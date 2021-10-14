@@ -24,6 +24,15 @@
 
     ch0.enable(); // start timer
   ```
+  # Units
+  This library uses embedded_time::{duration::*, rate::*} for time units. You can use any supported units as long as they can be cast into Nanoseconds::<u64> for durations, or Hertz for cycles. Time can be cast into other units supported by embedded_time by explicitly typing a variable and calling .into() Note that this will round to the nearest integer in the cast units, potentially losing precision.
+
+  ## Time Casting Example:
+  ```rust
+  use embedded_time::duration::*;
+  // gets the current time in Nanoseconds::<u64> and casts it into milliseconds.
+  let time_in_milliseconds: Milliseconds = watchdog.current_time().into();
+  ```
 */
 
 use crate::{clock::Clocks, pac};

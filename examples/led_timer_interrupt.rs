@@ -5,7 +5,7 @@
 // The programmed blinking pattern below results in:
 //      -the interrupt-controlled blue LED being on for 1500ms, then off for 1500ms.
 //      -the interrupt-controlled green LED toggling on for 500ms and then off for 1000ms.
-//      -the delay-loop controlled red LED toggling on for 3000ms and off for 3000ms.
+//      -the timer::CountDown delay-loop controlled red LED toggling every 3000ms.
 // Global access to variables inside the interrupt handler function is controlled by the
 // Mutex<RefCell<>> library, as outlined in the rust embedded handbook chapter on concurrency.
 // See https://docs.rust-embedded.org/book/concurrency/index.html for more info.
@@ -16,7 +16,7 @@
 use bl602_hal as hal;
 use core::cell::RefCell;
 use core::ops::DerefMut;
-use embedded_hal::delay::blocking::DelayMs;
+use embedded_hal::timer::nb::CountDown;
 use embedded_hal::digital::blocking::{OutputPin, ToggleableOutputPin};
 use embedded_time::{duration::*, rate::*};
 use hal::{
@@ -62,11 +62,16 @@ fn main() -> ! {
     let mut g_led_pin = glb.pin14.into_pull_down_output();
     let _ = g_led_pin.set_high();
 
-    // Initialize TimerCh0 to increment its count at a rate of 1000Hz:
+    // Initialize TimerCh0 to increment its count at a rate of 160MHz:
     let timers = dp.TIMER.split();
     let timer_ch0 = timers
         .channel0
         .set_clock_source(ClockSource::Fclk(&clocks), 160_000_000_u32.Hz());
+
+    // Initialize TimerCh1 at a rate of 1kHz to use for a blocking delay on the red LED:
+    let mut timer_ch1 = timers
+        .channel1
+        .set_clock_source(ClockSource::Clock1Khz, 1000u32.Hz());
 
     // Set up Match0 which we will use to control the blue LED:
     // Note that you can use any embedded_time::duration as a time value in these set functions.
@@ -83,8 +88,9 @@ fn main() -> ! {
     timer_ch0.set_preload_value(0.microseconds());
     timer_ch0.set_preload(hal::timer::Preload::PreloadMatchComparator0);
 
-    // Finally, remember to enable the timer channel so the interrupts will function:
+    // Finally, remember to enable the timer channels so they will function:
     timer_ch0.enable();
+    timer_ch1.enable();
 
     // Move the references to their UnsafeCells once initialized, and before interrupts are enabled:
     riscv::interrupt::free(|cs| G_INTERRUPT_LED_PIN_B.borrow(cs).replace(Some(b_led_pin)));
@@ -97,12 +103,16 @@ fn main() -> ! {
     // and immediately re-triggering the interrupt function when it returns.
     enable_interrupt(Interrupt::TimerCh0);
 
-    // Create a blocking delay function based on the current cpu frequency for the red LED control:
-    let mut d = bl602_hal::delay::McycleDelay::new(clocks.sysclk().0);
-
+    // The .start() and .wait() functions as specified in the embedded_hal allow us to use
+    // a timer without needing to configure any match values or handle any interrupts:
     loop {
-        // Toggle the red channel every 3000ms to show it is still running in the background:
-        let _ = d.delay_ms(3000);
+        // Start the timer's CountDown functionality. The countdown will last 3000ms.
+        timer_ch1.start(3_000u32.milliseconds()).ok();
+        // The .wait() function returns an error until the timer has finished counting down.
+        while timer_ch1.wait().is_err() {
+            // Stay in the while loop until the timer is done.
+        }
+        // Once the timer is done counting down, toggle the LED:
         let _ = r_led_pin.toggle();
     }
 }

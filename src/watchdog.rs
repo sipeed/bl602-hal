@@ -93,10 +93,19 @@ pub struct ConfiguredWatchdog0 {
     is_running: RefCell<bool>,
 }
 
+/// This sends the access codes so that we can write values to the WDT registers.
+fn send_access_codes() {
+    let timer = unsafe { &*pac::TIMER::ptr() };
+    timer.wfar.write(|w|unsafe {w.wfar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wfar))});
+    timer.wsar.write(|w|unsafe {w.wsar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wsar))});
+}
+
 impl ConfiguredWatchdog0 {
+
     /// Enable the watchdog counter
     pub fn enable(&self) {
         let timer = unsafe { &*pac::TIMER::ptr() };
+        send_access_codes();
         timer.wmer.modify(|_r, w| w.we().set_bit());
         self.is_running.replace(true);
     }
@@ -111,8 +120,7 @@ impl ConfiguredWatchdog0 {
         let time: Nanoseconds::<u64> = time.into();
         let ticks = (self.clock.0 as u64 * time.integer() / 1_000_000_000_u64) as u16;
         let timer = unsafe { &*pac::TIMER::ptr() };
-        timer.wsar.write(|w|unsafe {w.wsar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wsar))});
-        timer.wfar.write(|w|unsafe {w.wfar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wfar))});
+        send_access_codes();
         timer.wmr.write(|w| unsafe { w.wmr().bits(ticks) });
     }
 
@@ -132,8 +140,7 @@ impl ConfiguredWatchdog0 {
     /// clears the watchdog interrupt once it has been set by the WDT activating in Interrupt mode
     pub fn clear_interrupt(&self) {
         let timer = unsafe { &*pac::TIMER::ptr() };
-        timer.wsar.write(|w|unsafe {w.wsar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wsar))});
-        timer.wfar.write(|w|unsafe {w.wfar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wfar))});
+        send_access_codes();
         timer.wicr.write(|w| w.wiclr().clear_bit());
     }
 
@@ -155,13 +162,13 @@ impl ConfiguredWatchdog0 {
         let timer = unsafe { &*pac::TIMER::ptr() };
         match mode {
             WatchdogMode::Interrupt => {
-                timer.wsar.write(|w|unsafe {w.wsar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wsar))});
                 timer.wfar.write(|w|unsafe {w.wfar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wfar))});
+                timer.wsar.write(|w|unsafe {w.wsar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wsar))});
                 timer.wmer.write(|w| w.wrie().clear_bit());
             }
             WatchdogMode::Reset => {
-                timer.wsar.write(|w|unsafe {w.wsar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wsar))});
                 timer.wfar.write(|w|unsafe {w.wfar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wfar))});
+                timer.wsar.write(|w|unsafe {w.wsar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wsar))});
                 timer.wmer.write(|w| w.wrie().set_bit());
             }
         }
@@ -170,8 +177,7 @@ impl ConfiguredWatchdog0 {
     /// Clear the watchdog reset register (WTS)
     pub fn clear_wts(&self) {
         let timer = unsafe { &*pac::TIMER::ptr() };
-        timer.wsar.write(|w|unsafe {w.wsar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wsar))});
-        timer.wfar.write(|w|unsafe {w.wfar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wfar))});
+        send_access_codes();
         timer.wsr.write(|w| w.wts().clear_bit());
     }
 
@@ -189,8 +195,7 @@ impl embedded_hal::watchdog::blocking::Watchdog for ConfiguredWatchdog0 {
     /// WCR register is write-only, no need to preserve register contents
     fn feed(&mut self) -> Result<(), Self::Error> {
         let timer = unsafe { &*pac::TIMER::ptr() };
-        timer.wsar.write(|w|unsafe {w.wsar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wsar))});
-        timer.wfar.write(|w|unsafe {w.wfar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wfar))});
+        send_access_codes();
         timer.wcr.write(|w| w.wcr().set_bit());
         Ok(())
     }
@@ -202,8 +207,7 @@ impl embedded_hal::watchdog::blocking::Disable for ConfiguredWatchdog0 {
 
     fn disable(self) -> Result<Self::Target, Self::Error> {
         let timer = unsafe { &*pac::TIMER::ptr() };
-        timer.wsar.write(|w|unsafe {w.wsar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wsar))});
-        timer.wfar.write(|w|unsafe {w.wfar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wfar))});
+        send_access_codes();
         timer.wmer.write(|w| w.we().clear_bit());
         self.is_running.replace(false);
         Ok(self)
@@ -226,16 +230,14 @@ impl TimerWatchdog {
     pub fn set_clock_source(self, source: ClockSource, target_clock: impl Into<Hertz>) -> ConfiguredWatchdog0 {
         let target_clock = target_clock.into();
         let timer = unsafe{ &*pac::TIMER::ptr() };
-        timer.wsar.write(|w|unsafe {w.wsar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wsar))});
-        timer.wfar.write(|w|unsafe {w.wfar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wfar))});
+        send_access_codes();
         timer.tccr.modify(|_r, w| unsafe {w.cs_wdt().bits(source.tccr_value())});
         let divider = source.hertz().0/ target_clock.0;
 
         if !(1..256).contains(&divider) {
             panic!("unreachable target clock");
         }
-        timer.wsar.write(|w|unsafe {w.wsar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wsar))});
-        timer.wfar.write(|w|unsafe {w.wfar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wfar))});
+        send_access_codes();
         timer.tcdr.modify(|_r, w| unsafe { w.wcdr().bits((divider - 1) as u8) });
 
         ConfiguredWatchdog0 {

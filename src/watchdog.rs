@@ -106,6 +106,8 @@ impl ConfiguredWatchdog0 {
     pub fn enable(&self) {
         let timer = unsafe { &*pac::TIMER::ptr() };
         send_access_codes();
+        timer.wcr.write(|w| w.wcr().set_bit());
+        send_access_codes();
         timer.wmer.modify(|_r, w| w.we().set_bit());
         self.is_running.replace(true);
     }
@@ -141,7 +143,7 @@ impl ConfiguredWatchdog0 {
     pub fn clear_interrupt(&self) {
         let timer = unsafe { &*pac::TIMER::ptr() };
         send_access_codes();
-        timer.wicr.write(|w| w.wiclr().clear_bit());
+        timer.wicr.write(|w| w.wiclr().set_bit());
     }
 
     /// Get the current value in ticks of the watchdog timer
@@ -178,13 +180,19 @@ impl ConfiguredWatchdog0 {
     pub fn clear_wts(&self) {
         let timer = unsafe { &*pac::TIMER::ptr() };
         send_access_codes();
-        timer.wsr.write(|w| w.wts().clear_bit());
+        timer.wsr.write(|w| w.wts().set_bit());
     }
 
     /// Check the value of the watchdog reset register (WTS)
     pub fn get_wts(&self) -> bool {
         let timer = unsafe { &*pac::TIMER::ptr() };
         timer.wsr.read().wts().bits() as bool
+    }
+
+    /// Read the TCCR register containing the CS_WDT bits that select the clock source
+    pub fn get_cs_wdt(&self) -> u8 {
+        let timer = unsafe { &*pac::TIMER::ptr() };
+        timer.tccr.read().cs_wdt().bits() as u8
     }
 }
 
@@ -230,15 +238,18 @@ impl TimerWatchdog {
     pub fn set_clock_source(self, source: ClockSource, target_clock: impl Into<Hertz>) -> ConfiguredWatchdog0 {
         let target_clock = target_clock.into();
         let timer = unsafe{ &*pac::TIMER::ptr() };
-        send_access_codes();
         timer.tccr.modify(|_r, w| unsafe {w.cs_wdt().bits(source.tccr_value())});
         let divider = source.hertz().0/ target_clock.0;
 
         if !(1..256).contains(&divider) {
             panic!("unreachable target clock");
         }
-        send_access_codes();
+
         timer.tcdr.modify(|_r, w| unsafe { w.wcdr().bits((divider - 1) as u8) });
+
+        //clear interrupt bit when initializing:
+        send_access_codes();
+        timer.wicr.write(|w| unsafe { w.wiclr().clear_bit() });
 
         ConfiguredWatchdog0 {
             clock: target_clock.into(),

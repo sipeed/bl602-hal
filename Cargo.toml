@@ -27,6 +27,7 @@ riscv-rt = "0.8.0"
 panic-halt = "0.2.0"
 ssd1306 = "0.6.0"
 embedded-graphics = "0.7.1"
+heapless = "0.7.7"
 
 [build-dependencies]
 riscv-target = "0.1.2"

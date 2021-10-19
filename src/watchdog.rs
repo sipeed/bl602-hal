@@ -41,12 +41,41 @@
   ```
  */
 
-use crate::{pac, timer::{ClockSource, TimerWatchdog}};
+use crate::{pac, clock::Clocks, timer::{TimerWatchdog}};
 use core::cell::RefCell;
 use embedded_time::{
     duration::*,
     rate::*,
 };
+
+/// Clock sources for a Watchdog channel.
+/// There are only three timer clock sources available.
+pub enum WdtClockSource<'a> {
+    /// System master clock
+    Fclk(&'a Clocks),
+    /// 32K clock
+    Rc32Khz,
+    /// 32M clock
+    Pll32Mhz,
+}
+
+impl<'a> WdtClockSource<'a> {
+    pub fn tccr_value(&self) -> u8 {
+        match self {
+            WdtClockSource::Fclk(_) => 0,
+            WdtClockSource::Rc32Khz => 1,
+            WdtClockSource::Pll32Mhz => 3,
+        }
+    }
+
+    pub fn hertz(&self) -> Hertz {
+        match self {
+            WdtClockSource::Fclk(clocks) => clocks.sysclk(),
+            WdtClockSource::Rc32Khz => 32_000.Hz(),
+            WdtClockSource::Pll32Mhz => 32_000_000.Hz(),
+        }
+    }
+}
 
 /// Error for [Watchdog](embedded_hal::watchdog::blocking::Watchdog)
 #[derive(Debug)]
@@ -235,13 +264,13 @@ impl embedded_hal::watchdog::blocking::Enable for ConfiguredWatchdog0 {
 }
 
 impl TimerWatchdog {
-    pub fn set_clock_source(self, source: ClockSource, target_clock: impl Into<Hertz>) -> ConfiguredWatchdog0 {
+    pub fn set_clock_source(self, source: WdtClockSource, target_clock: impl Into<Hertz>) -> ConfiguredWatchdog0 {
         let target_clock = target_clock.into();
         let timer = unsafe{ &*pac::TIMER::ptr() };
         timer.tccr.modify(|_r, w| unsafe {w.cs_wdt().bits(source.tccr_value())});
         let divider = source.hertz().0/ target_clock.0;
 
-        if !(1..256).contains(&divider) {
+        if !(1..=256).contains(&divider) {
             panic!("unreachable target clock");
         }
 

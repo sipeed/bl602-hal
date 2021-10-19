@@ -63,21 +63,17 @@ fn main() -> ! {
     // Create a blocking delay function based on the current cpu frequency
     let mut d = bl602_hal::delay::McycleDelay::new(clocks.sysclk().0);
 
-    // Set up the watchdog timer:
+    // Set up the watchdog timer to the slowest tick rate possible:
     let timers = dp.TIMER.split();
     let watchdog = timers
         .watchdog
-        .set_clock_source(ClockSource::Rc32Khz, 4.Hz());
-
-    let mut debug_string = String::<2048>::from("Clock Select Bits: ");
-    let _ = write!(debug_string, "{}\r\n", watchdog.get_cs_wdt());
-    serial.write_str(debug_string.as_str());
+        .set_clock_source(WdtClockSource::Rc32Khz, 125.Hz());
 
     // The watchdog timer will reset the board if not fed often enough.
     watchdog.set_mode(WatchdogMode::Reset);
 
     // This will cause the board to reset if the watchdog is not fed at least once every 10 seconds.
-    let mut watchdog = watchdog.start(100_u32.seconds()).unwrap();
+    let mut watchdog = watchdog.start(10_u32.seconds()).unwrap();
 
     // If you were using the watchdog timer in interrupt mode instead of reset mode, you would need
     // enable the interrupt like below:
@@ -93,22 +89,20 @@ fn main() -> ! {
     let _ = write!(debug_string, "{}\r\n", wts_bit_value);
     serial.write_str(debug_string.as_str());
 
-
-    let mut debug_string = String::<2048>::from("Match Ticks: ");
-    let _ = write!(debug_string, "{}\r\n", watchdog.get_match_ticks());
-    serial.write_str(debug_string.as_str());
-
     loop {
         // Uncomment the 2 lines below to `feed()` the watchdog once every second. This will result
         // in the board never resetting, since the watchdog has been fed.
 
         // watchdog.feed();
-        // d.delay_ms(250);
+        // d.delay_ms(1000);
 
-        let mut debug_string = String::<2048>::from("Current Ticks: ");
-        let _ = write!(debug_string, "{}\r\n", watchdog.get_current_ticks());
-        serial.write_str(debug_string.as_str());
-        d.delay_ms(1000);
+        // Uncomment the 4 lines below to enable debug printing of the current number of ticks in
+        // the watchdog timer's wvr register:
+
+        // let mut debug_string = String::<2048>::from("Current Ticks: ");
+        // let _ = write!(debug_string, "{}\r\n", watchdog.get_current_ticks());
+        // serial.write_str(debug_string.as_str());
+        // d.delay_ms(1000);
     }
 }
 

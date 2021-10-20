@@ -1,51 +1,48 @@
 /*!
-    # Watchdog
-    The BL602 has a single watchdog timer. It can be configured to run from four different clock sources, which can be divided by 1-256. It has a single counter and comparator, which will determine when the watchdog is triggered. The trigger can either reset the chip or call an interrupt function.
+   # Watchdog
+   The BL602 has a single watchdog timer. It can be configured to run from four different clock sources, which can be divided by 1-256. It has a single counter and comparator, which will determine when the watchdog is triggered. The trigger can either reset the chip or call an interrupt function.
 
-    ## Watchdog Setup and Activation Example:
-    ```rust
+   ## Watchdog Setup and Activation Example:
+   ```rust
 
-    let dp = pac::Peripherals::take().unwrap();
-    let timers = dp.TIMER.split();
-    let mut wd: ConfiguredWatchdog0 = timers
-        .watchdog
-        .set_clock_source(WdtClockSource::Rc32Khz, 125.Hz());
-    wd.set_mode(WatchdogMode::Interrupt);
-    wd.start(10.seconds());
+   let dp = pac::Peripherals::take().unwrap();
+   let timers = dp.TIMER.split();
+   let mut wd: ConfiguredWatchdog0 = timers
+       .watchdog
+       .set_clock_source(WdtClockSource::Rc32Khz, 125.Hz());
+   wd.set_mode(WatchdogMode::Interrupt);
+   wd.start(10.seconds());
 
-    // When using the watchdog in interrupt mode, you must also enable the IRQ interrupt
-    enable_interrupt(Interrupt::Watchdog);
-    loop{
-        // Do other things in the loop, but make sure to feed the watchdog at least every 10 seconds
-        wd.feed();
-    }
+   // When using the watchdog in interrupt mode, you must also enable the IRQ interrupt
+   enable_interrupt(Interrupt::Watchdog);
+   loop{
+       // Do other things in the loop, but make sure to feed the watchdog at least every 10 seconds
+       wd.feed();
+   }
 
-    // ...
+   // ...
 
-    // If you fail to feed the watchdog, the interrupt function `Watchdog()` will be triggered.
-    // Make sure to clear the interrupt in your interrupt function or you'll never escape
-    #[no_mangle]
-    fn Watchdog(trap_frame: &mut TrapFrame){
-        clear_interrupt(Interrupt::Watchdog);
-    }
+   // If you fail to feed the watchdog, the interrupt function `Watchdog()` will be triggered.
+   // Make sure to clear the interrupt in your interrupt function or you'll never escape
+   #[no_mangle]
+   fn Watchdog(trap_frame: &mut TrapFrame){
+       clear_interrupt(Interrupt::Watchdog);
+   }
 
-    ```
-  # Units
-  This library uses embedded_time::{duration::*, rate::*} for time units. You can use any supported units as long as they can be cast into Nanoseconds::<u64> for durations, or Hertz for cycles. Time can be cast into other units supported by embedded_time by explicitly typing a variable and calling .into() Note that this will round to the nearest integer in the cast units, potentially losing precision.
+   ```
+ # Units
+ This library uses embedded_time::{duration::*, rate::*} for time units. You can use any supported units as long as they can be cast into Nanoseconds::<u64> for durations, or Hertz for cycles. Time can be cast into other units supported by embedded_time by explicitly typing a variable and calling .into() Note that this will round to the nearest integer in the cast units, potentially losing precision.
 
-  ## Time Casting Example:
-  ```rust
-  use embedded_time::duration::*;
-  // gets the current time in Nanoseconds::<u64> and casts it into milliseconds.
-  let time_in_milliseconds: Milliseconds = watchdog.current_time().into();
-  ```
- */
+ ## Time Casting Example:
+ ```rust
+ use embedded_time::duration::*;
+ // gets the current time in Nanoseconds::<u64> and casts it into milliseconds.
+ let time_in_milliseconds: Milliseconds = watchdog.current_time().into();
+ ```
+*/
 
-use crate::{pac, clock::Clocks, timer::{TimerWatchdog}};
-use embedded_time::{
-    duration::*,
-    rate::*,
-};
+use crate::{clock::Clocks, pac, timer::TimerWatchdog};
+use embedded_time::{duration::*, rate::*};
 
 /// Clock sources for a Watchdog channel.
 /// There are only three timer clock sources available.
@@ -82,7 +79,6 @@ pub enum WatchdogError {
     Infallible,
 }
 
-
 pub enum WatchdogMode {
     Interrupt,
     Reset,
@@ -96,7 +92,7 @@ pub enum WatchdogKeys {
 impl WatchdogKeys {
     /// Returns the key access register values that must be written immediately before
     /// writing any of the watchdog timer's critical register values
-    const fn get_key(&self) -> u16 {
+    fn get_key(&self) -> u16 {
         match self {
             WatchdogKeys::Wfar => 0xBABA_u16,
             WatchdogKeys::Wsar => 0xEB10_u16,
@@ -112,12 +108,15 @@ pub struct ConfiguredWatchdog0 {
 /// This sends the access codes so that we can write values to the WDT registers.
 fn send_access_codes() {
     let timer = unsafe { &*pac::TIMER::ptr() };
-    timer.wfar.write(|w|unsafe {w.wfar().bits(WatchdogKeys::get_key(&WatchdogKeys::Wfar))});
-    timer.wsar.write(|w|unsafe {w.wsar().bits(WatchdogKeys::get_key(&WatchdogKeys::Wsar))});
+    timer
+        .wfar
+        .write(|w| unsafe { w.wfar().bits(WatchdogKeys::get_key(&WatchdogKeys::Wfar)) });
+    timer
+        .wsar
+        .write(|w| unsafe { w.wsar().bits(WatchdogKeys::get_key(&WatchdogKeys::Wsar)) });
 }
 
 impl ConfiguredWatchdog0 {
-
     /// Enable the watchdog counter
     pub fn enable(&self) {
         let timer = unsafe { &*pac::TIMER::ptr() };
@@ -260,7 +259,10 @@ impl embedded_hal::watchdog::blocking::Enable for ConfiguredWatchdog0 {
     type Time = Nanoseconds<u64>;
     type Target = ConfiguredWatchdog0;
 
-    fn start<T>(self, period: T) -> Result<Self::Target, Self::Error> where T: Into<Self::Time> {
+    fn start<T>(self, period: T) -> Result<Self::Target, Self::Error>
+    where
+        T: Into<Self::Time>,
+    {
         self.set_timeout(period);
         self.enable();
         Ok(self)
@@ -287,17 +289,25 @@ impl TimerWatchdog {
     ///
     ///         - This results in the max time of 65535 ticks / 160_000_000 Hz = ~4.09 milliseconds
     ///
-    pub fn set_clock_source(self, source: WdtClockSource, target_clock: impl Into<Hertz>) -> ConfiguredWatchdog0 {
+    pub fn set_clock_source(
+        self,
+        source: WdtClockSource,
+        target_clock: impl Into<Hertz>,
+    ) -> ConfiguredWatchdog0 {
         let target_clock = target_clock.into();
-        let timer = unsafe{ &*pac::TIMER::ptr() };
-        timer.tccr.modify(|_r, w| unsafe {w.cs_wdt().bits(source.tccr_value())});
-        let divider = source.hertz().0/ target_clock.0;
+        let timer = unsafe { &*pac::TIMER::ptr() };
+        timer
+            .tccr
+            .modify(|_r, w| unsafe { w.cs_wdt().bits(source.tccr_value()) });
+        let divider = source.hertz().0 / target_clock.0;
 
         if !(1..=256).contains(&divider) {
             panic!("unreachable target clock");
         }
 
-        timer.tcdr.modify(|_r, w| unsafe { w.wcdr().bits((divider - 1) as u8) });
+        timer
+            .tcdr
+            .modify(|_r, w| unsafe { w.wcdr().bits((divider - 1) as u8) });
 
         //clear interrupt bit when initializing:
         send_access_codes();

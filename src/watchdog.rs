@@ -56,7 +56,7 @@ pub enum WdtClockSource<'a> {
 }
 
 impl<'a> WdtClockSource<'a> {
-    pub fn tccr_value(&self) -> u8 {
+    fn tccr_value(&self) -> u8 {
         match self {
             WdtClockSource::Fclk(_) => 0,
             WdtClockSource::Rc32Khz => 1,
@@ -64,7 +64,7 @@ impl<'a> WdtClockSource<'a> {
         }
     }
 
-    pub fn hertz(&self) -> Hertz {
+    fn hertz(&self) -> Hertz {
         match self {
             WdtClockSource::Fclk(clocks) => clocks.sysclk(),
             WdtClockSource::Rc32Khz => 32_000.Hz(),
@@ -110,10 +110,10 @@ fn send_access_codes() {
     let timer = unsafe { &*pac::TIMER::ptr() };
     timer
         .wfar
-        .write(|w| unsafe { w.wfar().bits(WatchdogKeys::get_key(&WatchdogKeys::Wfar)) });
+        .write(|w| unsafe { w.wfar().bits(WatchdogKeys::Wfar.get_key()) });
     timer
         .wsar
-        .write(|w| unsafe { w.wsar().bits(WatchdogKeys::get_key(&WatchdogKeys::Wsar)) });
+        .write(|w| unsafe { w.wsar().bits(WatchdogKeys::Wsar.get_key()) });
 }
 
 impl ConfiguredWatchdog0 {

@@ -38,7 +38,6 @@ use hal::{
     timer::*,
     watchdog::*,
 };
-use heapless::String;
 use panic_halt as _;
 use riscv::interrupt::Mutex;
 
@@ -98,9 +97,7 @@ fn main() -> ! {
         false => 0_u8,
     };
 
-    let mut debug_string = String::<2048>::from("The watchdog WTS bit reads as: ");
-    let _ = write!(debug_string, "{}\r\n", wts_bit_value);
-    serial.write_str(debug_string.as_str()).ok();
+    writeln!(serial, "The watchdog WTS bit reads as: {}\r", wts_bit_value).ok();
 
     // On a clean boot, the watchdog will trigger a board reset if not fed in time.
     // If the watchdog has previously reset the board, switch to interrupt mode.
@@ -115,7 +112,7 @@ fn main() -> ! {
 
     // The watchdog timer doesn't begin counting ticks until it is started. We don't need to handle
     // the error state, since the watchdog start function will never actually return an Err().
-    let mut watchdog = watchdog.start(10_u32.seconds()).unwrap();
+    let watchdog = watchdog.start(10_u32.seconds()).unwrap();
 
     // Move the references to their UnsafeCells once initialized, and before interrupts are enabled:
     riscv::interrupt::free(|cs| G_INTERRUPT_LED_PIN_R.borrow(cs).replace(Some(r_led_pin)));

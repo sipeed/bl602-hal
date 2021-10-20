@@ -38,10 +38,7 @@
 use crate::{clock::Clocks, pac};
 use bl602_pac::TIMER;
 use core::cell::RefCell;
-use embedded_time::{
-    duration::*,
-    rate::*,
-};
+use embedded_time::{duration::*, rate::*};
 use paste::paste;
 
 /// Error for [CountDown](embedded_hal::timer::CountDown)
@@ -65,7 +62,7 @@ pub enum ClockSource<'a> {
 }
 
 impl<'a> ClockSource<'a> {
-    pub fn tccr_value(&self) -> u8 {
+    fn tccr_value(&self) -> u8 {
         match self {
             ClockSource::Fclk(_) => 0,
             ClockSource::Rc32Khz => 1,
@@ -74,7 +71,7 @@ impl<'a> ClockSource<'a> {
         }
     }
 
-    pub fn hertz(&self) -> Hertz {
+    fn hertz(&self) -> Hertz {
         match self {
             ClockSource::Fclk(clocks) => clocks.sysclk(),
             ClockSource::Rc32Khz => 32_000.Hz(),

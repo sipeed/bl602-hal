@@ -273,13 +273,20 @@ impl TimerWatchdog {
     /// Note that when setting up the clock source, you will need to select a source and tick rate that
     /// allows for your desired timeout time to be expressed as 65535 or less ticks of the WDT.
     ///
-    /// Examples:
-    ///     - Slowest possible tick rate: Clock Source of `32 kHz` clock selected, with target clock of `125 Hz`.
-    ///         - This results in the max time of `65535 ticks / 125 Hz = 524.28 seconds`
-    ///     - Fast 32kHz tick rate: Clock source of `32 kHz` clock selected, with target clock of `32_000 Hz`.
-    ///         - This results in the max time of `65535 ticks / 32_000 Hz = ~2.04 seconds`
-    ///     - Fastest possible tick rate: Clock source of `Fclk at 160 MHz` clock selected, with target clock of `160_000_000 Hz`.
-    ///         - This results in the max time of `65535 ticks / 160_000_000 Hz = ~4.09 milliseconds`
+    /// # Examples:
+    ///
+    ///     - Slowest possible tick rate: Clock Source of 32 kHz clock selected, with target clock of 125 Hz
+    ///
+    ///         - This results in the max time of 65535 ticks / 125 Hz = 524.28 seconds
+    ///
+    ///     - Fast 32kHz tick rate: Clock source of 32 kHz clock selected, with target clock of 32_000 Hz.
+    ///
+    ///         - This results in the max time of 65535 ticks / 32_000 Hz = ~2.04 seconds
+    ///
+    ///     - Fastest possible tick rate: Clock source of Fclk at 160 MHz clock selected, with target clock of 160_000_000 Hz.
+    ///
+    ///         - This results in the max time of 65535 ticks / 160_000_000 Hz = ~4.09 milliseconds
+    ///
     pub fn set_clock_source(self, source: WdtClockSource, target_clock: impl Into<Hertz>) -> ConfiguredWatchdog0 {
         let target_clock = target_clock.into();
         let timer = unsafe{ &*pac::TIMER::ptr() };

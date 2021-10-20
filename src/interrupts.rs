@@ -140,7 +140,7 @@ pub unsafe extern "C" fn start_trap_rust_hal(trap_frame: *mut TrapFrame) {
                 Interrupt::Gpio => Gpio(trap_frame.as_mut().unwrap()),
                 Interrupt::TimerCh0 => TimerCh0(trap_frame.as_mut().unwrap()),
                 Interrupt::TimerCh1 => TimerCh1(trap_frame.as_mut().unwrap()),
-                Interrupt::Watchdog => TimerCh1(trap_frame.as_mut().unwrap()),
+                Interrupt::Watchdog => Watchdog(trap_frame.as_mut().unwrap()),
             };
         }
     }

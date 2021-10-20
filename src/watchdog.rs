@@ -4,25 +4,25 @@
 
     ## Watchdog Setup and Activation Example:
     ```rust
-    use bl602_hal::{watchdog::*, interrupts::*, pac, timer::*,};
 
     let dp = pac::Peripherals::take().unwrap();
     let timers = dp.TIMER.split();
     let mut wd: ConfiguredWatchdog0 = timers
         .watchdog
-        .set_clock_source(ClockSource::Clock1Khz, 1_000u32.Hz());
+        .set_clock_source(WdtClockSource::Rc32Khz, 125.Hz());
     wd.set_mode(WatchdogMode::Interrupt);
-    wd.start(10u32.seconds());
+    wd.start(10.seconds());
 
     // When using the watchdog in interrupt mode, you must also enable the IRQ interrupt
     enable_interrupt(Interrupt::Watchdog);
     loop{
-        // So other things in the loop, but make sure to feed the watchdog at least every 10 seconds
+        // Do other things in the loop, but make sure to feed the watchdog at least every 10 seconds
         wd.feed();
     }
 
     // ...
 
+    // If you fail to feed the watchdog, the interrupt function `Watchdog()` will be triggered.
     // Make sure to clear the interrupt in your interrupt function or you'll never escape
     #[no_mangle]
     fn Watchdog(trap_frame: &mut TrapFrame){
@@ -42,7 +42,6 @@
  */
 
 use crate::{pac, clock::Clocks, timer::{TimerWatchdog}};
-use core::cell::RefCell;
 use embedded_time::{
     duration::*,
     rate::*,
@@ -89,29 +88,18 @@ pub enum WatchdogMode {
     Reset,
 }
 
-impl WatchdogMode {
-    /// Returns the bit value to be set for the WMER WRIE bit to configure
-    /// the watchdog timer to operate in reset mode or in interrupt mode
-    const fn get_bit_value(&self) -> bool {
-        match self {
-            WatchdogMode::Interrupt => false,
-            WatchdogMode::Reset => true,
-        }
-    }
-}
-
-pub enum WatchdogAccessKeys {
+pub enum WatchdogKeys {
     Wfar,
     Wsar,
 }
 
-impl WatchdogAccessKeys {
-    /// Returns the key access register values that must be written
-    /// to write to the watchdog timer's registers
-    const fn get_key_value(&self) -> u16 {
+impl WatchdogKeys {
+    /// Returns the key access register values that must be written immediately before
+    /// writing any of the watchdog timer's critical register values
+    const fn get_key(&self) -> u16 {
         match self {
-            WatchdogAccessKeys::Wfar => 0xBABA_u16,
-            WatchdogAccessKeys::Wsar => 0xEB10_u16,
+            WatchdogKeys::Wfar => 0xBABA_u16,
+            WatchdogKeys::Wsar => 0xEB10_u16,
         }
     }
 }
@@ -119,14 +107,13 @@ impl WatchdogAccessKeys {
 /// A configured Watchdog timer ready to be enabled or `feed()`
 pub struct ConfiguredWatchdog0 {
     clock: Hertz,
-    is_running: RefCell<bool>,
 }
 
 /// This sends the access codes so that we can write values to the WDT registers.
 fn send_access_codes() {
     let timer = unsafe { &*pac::TIMER::ptr() };
-    timer.wfar.write(|w|unsafe {w.wfar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wfar))});
-    timer.wsar.write(|w|unsafe {w.wsar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wsar))});
+    timer.wfar.write(|w|unsafe {w.wfar().bits(WatchdogKeys::get_key(&WatchdogKeys::Wfar))});
+    timer.wsar.write(|w|unsafe {w.wsar().bits(WatchdogKeys::get_key(&WatchdogKeys::Wsar))});
 }
 
 impl ConfiguredWatchdog0 {
@@ -138,71 +125,47 @@ impl ConfiguredWatchdog0 {
         timer.wcr.write(|w| w.wcr().set_bit());
         send_access_codes();
         timer.wmer.modify(|_r, w| w.we().set_bit());
-        self.is_running.replace(true);
     }
 
-    /// Check if the watchdog counter is enabled / running
-    pub fn is_enabled(&self) -> bool {
-        *self.is_running.borrow()
+    /// Read the WMER register's WE bit to see if the WDT is enabled or disabled.
+    pub fn is_enabled(&self) -> WatchdogMode {
+        let timer = unsafe { &*pac::TIMER::ptr() };
+        match timer.wmer.read().we().bit() {
+            true => WatchdogMode::Reset,
+            false => WatchdogMode::Interrupt,
+        }
     }
 
+    //noinspection RsSelfConvention
     /// Set the time that the watchdog timer will be triggered unless `feed()`
-    pub fn set_timeout(&self, time: impl Into<Nanoseconds::<u64>>) {
-        let time: Nanoseconds::<u64> = time.into();
+    pub fn set_timeout(&self, time: impl Into<Nanoseconds<u64>>) {
+        let time: Nanoseconds<u64> = time.into();
         let ticks = (self.clock.0 as u64 * time.integer() / 1_000_000_000_u64) as u16;
         let timer = unsafe { &*pac::TIMER::ptr() };
         send_access_codes();
         timer.wmr.write(|w| unsafe { w.wmr().bits(ticks) });
     }
 
-    /// Gets the value in ticks the match register is currently set to
-    pub fn get_match_ticks(&self) -> u16 {
-        let timer = unsafe { &*pac::TIMER::ptr() };
-        timer.wmr.read().wmr().bits() as u16
-    }
-
-    /// Get the current value of the watchdog timer in nanoseconds
-    pub fn get_match_time(&self) -> Nanoseconds::<u64> {
-        let ticks = self.get_match_ticks() as u64;
-        // ticks * (1e9 nanoseconds/second) / (ticks / second) = nanoseconds
-        Nanoseconds::<u64>::new((ticks * 1_000_000_000_u64) / self.clock.integer() as u64)
-    }
-
-    /// clears the watchdog interrupt once it has been set by the WDT activating in Interrupt mode
-    pub fn clear_interrupt(&self) {
-        let timer = unsafe { &*pac::TIMER::ptr() };
-        send_access_codes();
-        timer.wicr.write(|w| w.wiclr().set_bit());
-    }
-
-    /// Get the current value in ticks of the watchdog timer
-    pub fn get_current_ticks(&self) -> u16 {
-        let timer = unsafe { &*pac::TIMER::ptr() };
-        timer.wvr.read().wvr().bits() as u16
-    }
-
-    /// Get the current value of the watchdog timer in nanoseconds
-    pub fn get_current_time(&self) -> Nanoseconds::<u64> {
-        let ticks = self.get_current_ticks() as u64;
-        // ticks * (1e9 nanoseconds/second) / (ticks / second) = nanoseconds
-        Nanoseconds::<u64>::new((ticks * 1_000_000_000_u64) / self.clock.integer() as u64)
-    }
-
+    //noinspection RsSelfConvention
     /// Determine whether the watchdog will reset the board, or trigger an interrupt
     pub fn set_mode(&self, mode: WatchdogMode) {
         let timer = unsafe { &*pac::TIMER::ptr() };
         match mode {
             WatchdogMode::Interrupt => {
-                timer.wfar.write(|w|unsafe {w.wfar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wfar))});
-                timer.wsar.write(|w|unsafe {w.wsar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wsar))});
+                send_access_codes();
                 timer.wmer.write(|w| w.wrie().clear_bit());
             }
             WatchdogMode::Reset => {
-                timer.wfar.write(|w|unsafe {w.wfar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wfar))});
-                timer.wsar.write(|w|unsafe {w.wsar().bits(WatchdogAccessKeys::get_key_value(&WatchdogAccessKeys::Wsar))});
+                send_access_codes();
                 timer.wmer.write(|w| w.wrie().set_bit());
             }
         }
+    }
+
+    /// Check the value of the watchdog reset register (WTS) to see if a reset has occurred
+    pub fn has_watchdog_reset_occurred(&self) -> bool {
+        let timer = unsafe { &*pac::TIMER::ptr() };
+        timer.wsr.read().wts().bits() as bool
     }
 
     /// Clear the watchdog reset register (WTS)
@@ -212,16 +175,58 @@ impl ConfiguredWatchdog0 {
         timer.wsr.write(|w| w.wts().set_bit());
     }
 
-    /// Check the value of the watchdog reset register (WTS)
-    pub fn get_wts(&self) -> bool {
+    /// clears the watchdog interrupt once it has been set by the WDT activating in Interrupt mode
+    pub fn clear_interrupt(&self) {
         let timer = unsafe { &*pac::TIMER::ptr() };
-        timer.wsr.read().wts().bits() as bool
+        send_access_codes();
+        timer.wicr.write(|w| w.wiclr().set_bit());
+    }
+
+    /// Gets the value in ticks the match register is currently set to
+    pub fn get_match_ticks(&self) -> u16 {
+        let timer = unsafe { &*pac::TIMER::ptr() };
+        timer.wmr.read().wmr().bits() as u16
+    }
+
+    /// Get the current value of the watchdog timer in nanoseconds
+    pub fn get_match_time(&self) -> Nanoseconds<u64> {
+        let ticks = self.get_match_ticks() as u64;
+        // ticks * (1e9 nanoseconds/second) / (ticks / second) = nanoseconds
+        Nanoseconds::<u64>::new((ticks * 1_000_000_000_u64) / self.clock.integer() as u64)
+    }
+
+    /// Get the current value in ticks of the watchdog timer
+    pub fn get_current_ticks(&self) -> u16 {
+        let timer = unsafe { &*pac::TIMER::ptr() };
+        timer.wvr.read().wvr().bits() as u16
+    }
+
+    /// Get the current value of the watchdog timer in nanoseconds
+    pub fn get_current_time(&self) -> Nanoseconds<u64> {
+        let ticks = self.get_current_ticks() as u64;
+        // ticks * (1e9 nanoseconds/second) / (ticks / second) = nanoseconds
+        Nanoseconds::<u64>::new((ticks * 1_000_000_000_u64) / self.clock.integer() as u64)
     }
 
     /// Read the TCCR register containing the CS_WDT bits that select the clock source
     pub fn get_cs_wdt(&self) -> u8 {
         let timer = unsafe { &*pac::TIMER::ptr() };
         timer.tccr.read().cs_wdt().bits() as u8
+    }
+
+    /// Read the WMER register's WRIE bit to see if the WDT is in Reset or Interrupt mode.
+    pub fn get_wrie(&self) -> WatchdogMode {
+        let timer = unsafe { &*pac::TIMER::ptr() };
+        match timer.wmer.read().wrie().bit() {
+            true => WatchdogMode::Reset,
+            false => WatchdogMode::Interrupt,
+        }
+    }
+
+    /// Read the TCDR register's WCDR bits to see the clock division value.
+    pub fn get_wcdr(&self) -> u8 {
+        let timer = unsafe { &*pac::TIMER::ptr() };
+        timer.tcdr.read().wcdr().bits()
     }
 }
 
@@ -246,14 +251,13 @@ impl embedded_hal::watchdog::blocking::Disable for ConfiguredWatchdog0 {
         let timer = unsafe { &*pac::TIMER::ptr() };
         send_access_codes();
         timer.wmer.write(|w| w.we().clear_bit());
-        self.is_running.replace(false);
         Ok(self)
     }
 }
 
 impl embedded_hal::watchdog::blocking::Enable for ConfiguredWatchdog0 {
     type Error = WatchdogError;
-    type Time = Nanoseconds::<u64>;
+    type Time = Nanoseconds<u64>;
     type Target = ConfiguredWatchdog0;
 
     fn start<T>(self, period: T) -> Result<Self::Target, Self::Error> where T: Into<Self::Time> {
@@ -264,6 +268,18 @@ impl embedded_hal::watchdog::blocking::Enable for ConfiguredWatchdog0 {
 }
 
 impl TimerWatchdog {
+    //noinspection RsSelfConvention
+    /// This sets up the watchdog clock source and target clock speed, and returns a ConfiguredWatchdog0.
+    /// Note that when setting up the clock source, you will need to select a source and tick rate that
+    /// allows for your desired timeout time to be expressed as 65535 or less ticks of the WDT.
+    ///
+    /// Examples:
+    ///     - Slowest possible tick rate: Clock Source of `32 kHz` clock selected, with target clock of `125 Hz`.
+    ///         - This results in the max time of `65535 ticks / 125 Hz = 524.28 seconds`
+    ///     - Fast 32kHz tick rate: Clock source of `32 kHz` clock selected, with target clock of `32_000 Hz`.
+    ///         - This results in the max time of `65535 ticks / 32_000 Hz = ~2.04 seconds`
+    ///     - Fastest possible tick rate: Clock source of `Fclk at 160 MHz` clock selected, with target clock of `160_000_000 Hz`.
+    ///         - This results in the max time of `65535 ticks / 160_000_000 Hz = ~4.09 milliseconds`
     pub fn set_clock_source(self, source: WdtClockSource, target_clock: impl Into<Hertz>) -> ConfiguredWatchdog0 {
         let target_clock = target_clock.into();
         let timer = unsafe{ &*pac::TIMER::ptr() };
@@ -278,11 +294,10 @@ impl TimerWatchdog {
 
         //clear interrupt bit when initializing:
         send_access_codes();
-        timer.wicr.write(|w| unsafe { w.wiclr().clear_bit() });
+        timer.wicr.write(|w| w.wiclr().clear_bit());
 
         ConfiguredWatchdog0 {
-            clock: target_clock.into(),
-            is_running: RefCell::new(false)
+            clock: target_clock,
         }
     }
 }

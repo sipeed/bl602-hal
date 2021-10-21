@@ -20,6 +20,7 @@
     fn Gpio();
     fn TimerCh0();
     fn TimerCh1();
+    fn Watchdog();
   ```
 */
 
@@ -29,6 +30,7 @@ extern "C" {
     fn Gpio(trap_frame: &mut TrapFrame);
     fn TimerCh0(trap_frame: &mut TrapFrame);
     fn TimerCh1(trap_frame: &mut TrapFrame);
+    fn Watchdog(trap_frame: &mut TrapFrame);
 }
 
 // see components\bl602\bl602_std\bl602_std\RISCV\Core\Include\clic.h
@@ -41,6 +43,7 @@ const CLIC_INTIP: u32 = 0x000;
 const GPIO_IRQ: u32 = IRQ_NUM_BASE + 44;
 const TIMER_CH0_IRQ: u32 = IRQ_NUM_BASE + 36;
 const TIMER_CH1_IRQ: u32 = IRQ_NUM_BASE + 37;
+const WATCHDOG_IRQ: u32 = IRQ_NUM_BASE + 38;
 
 #[doc(hidden)]
 #[no_mangle]
@@ -137,6 +140,7 @@ pub unsafe extern "C" fn start_trap_rust_hal(trap_frame: *mut TrapFrame) {
                 Interrupt::Gpio => Gpio(trap_frame.as_mut().unwrap()),
                 Interrupt::TimerCh0 => TimerCh0(trap_frame.as_mut().unwrap()),
                 Interrupt::TimerCh1 => TimerCh1(trap_frame.as_mut().unwrap()),
+                Interrupt::Watchdog => Watchdog(trap_frame.as_mut().unwrap()),
             };
         }
     }
@@ -152,6 +156,9 @@ pub enum Interrupt {
     TimerCh0,
     /// Timer Channel 1 Interrupt
     TimerCh1,
+    /// Watchdog Timer Interrupt
+    /// Used when WDT is configured in Interrupt mode using ConfiguredWatchdog0::set_mode()
+    Watchdog,
 }
 
 impl Interrupt {
@@ -161,6 +168,7 @@ impl Interrupt {
             Interrupt::Gpio => GPIO_IRQ,
             Interrupt::TimerCh0 => TIMER_CH0_IRQ,
             Interrupt::TimerCh1 => TIMER_CH1_IRQ,
+            Interrupt::Watchdog => WATCHDOG_IRQ,
         }
     }
 
@@ -169,6 +177,7 @@ impl Interrupt {
             GPIO_IRQ => Interrupt::Gpio,
             TIMER_CH0_IRQ => Interrupt::TimerCh0,
             TIMER_CH1_IRQ => Interrupt::TimerCh1,
+            WATCHDOG_IRQ => Interrupt::Watchdog,
             _ => Interrupt::Unknown,
         }
     }

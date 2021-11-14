@@ -6,10 +6,10 @@
 //! # use crate::pwm;
 //! # let dp = crate::pac::Peripherals::take().unwrap();
 //! # let clocks = crate::clock::Clocks::new();
-//! let mut pwm = pwm::Pwm::from((dp.PWM, clocks));
+//! let mut channels = pwm::Channels::from((dp.PWM, clocks));
 //!
-//! pwm.enable(&pwm::Channel::C2).unwrap();
-//! pwm.set_period(embedded_time::duration::Seconds::new(1)).unwrap();
+//! pwm.channel2.enable(&()).unwrap();
+//! pwm.channel2.set_period(embedded_time::duration::Seconds::new(1)).unwrap();
 //! // TODO: duty cycle
 //!
 //! parts.pin17.into_pull_down_pwm();
@@ -25,33 +25,35 @@ use embedded_time::{
 
 use crate::{pac, clock::Clocks};
 
-/// Interface to the PWM peripherals
-pub struct Pwm {
-    pwm: pac::PWM,
-    clocks: Clocks,
-}
-
-impl From<(pac::PWM, Clocks)> for Pwm {
-    fn from(other: (pac::PWM, Clocks)) -> Self {
-        Self {
-            pwm: other.0,
-            clocks: other.1,
-        }
-    }
-}
-
 macro_rules! per_channel {
     ( $($channel:literal),* ) => { paste::paste!{
-        /// PWM channel
-        pub enum Channel {
-            $(
-                [<C $channel>],
-            )+
+        /// PWM entry point
+        pub struct Channels {
+            $(pub [<channel $channel>]: [<Channel $channel>]),+
         }
 
-        impl PwmTrait for Pwm {
+        $(
+            /// PWM channel
+            pub struct [<Channel $channel>] {
+                pwm: &'static pac::pwm::RegisterBlock,
+                clocks: Clocks,
+            }
+        )+
+
+        impl From<(pac::PWM, Clocks)> for Channels {
+            fn from(other: (pac::PWM, Clocks)) -> Self {
+                Self {
+                    $([<channel $channel>]: [<Channel $channel>] {
+                        pwm: unsafe { &*pac::PWM::ptr() },
+                        clocks: other.1,
+                    }),+
+                }
+            }
+        }
+
+        $(impl PwmTrait for [<Channel $channel>] {
             type Error = Infallible;
-            type Channel = Channel;
+            type Channel = ();
             type Time = Nanoseconds<u64>;
             type Duty = u32;
 
@@ -59,13 +61,12 @@ macro_rules! per_channel {
                 &mut self,
                 channel: &Self::Channel,
             ) -> Result<(), Self::Error> {
-                match channel {$(
-                    Channel:: [<C $channel>] => {
-                        self.pwm. [<pwm $channel _config>] .write(|w|
-                            w.pwm_stop_en().set_bit()
-                        );
-                    }
-                )+}
+                let _ = channel;
+
+                self.pwm. [<pwm $channel _config>] .write(|w|
+                    w.pwm_stop_en().set_bit()
+                );
+
                 Ok(())
             }
 
@@ -73,13 +74,11 @@ macro_rules! per_channel {
                 &mut self,
                 channel: &Self::Channel,
             ) -> Result<(), Self::Error> {
-                match channel {$(
-                    Channel:: [<C $channel>] => {
-                        self.pwm. [<pwm $channel _config>] .write(|w|
-                            w.pwm_stop_en().clear_bit()
-                        );
-                    }
-                )+}
+                let _ = channel;
+
+                self.pwm. [<pwm $channel _config>] .write(|w|
+                    w.pwm_stop_en().clear_bit()
+                );
                 Ok(())
             }
 
@@ -125,41 +124,40 @@ macro_rules! per_channel {
                         .integer();
 
                 let duty = period / 2;
-                $(
-                    self.pwm. [<pwm $channel _config>] .write(|w| {
-                        unsafe { w.reg_clk_sel().bits(0b11) }
-                    });
 
-                    // Clock divider
-                    self.pwm. [<pwm $channel _clkdiv>] .write(|w| unsafe {
-                        w.pwm_clk_div().bits(
-                            clk_div.try_into().unwrap_or(u16::max_value())
-                        )
-                    });
+                self.pwm. [<pwm $channel _config>] .write(|w| {
+                    unsafe { w.reg_clk_sel().bits(0b11) }
+                });
 
-                    // Period
-                    self.pwm. [<pwm $channel _period>] .write(|w| unsafe {
-                        w.pwm_period().bits(
-                            period.integer().try_into().unwrap_or(u16::max_value())
-                        )
-                    });
+                // Clock divider
+                self.pwm. [<pwm $channel _clkdiv>] .write(|w| unsafe {
+                    w.pwm_clk_div().bits(
+                        clk_div.try_into().unwrap_or(u16::max_value())
+                    )
+                });
 
-                    // Zero out threshold 1 (should be in set duty)
-                    self.pwm. [<pwm $channel _thre1>] .write(|w| unsafe {
-                        w.pwm_thre1().bits(0)
-                    });
+                // Period
+                self.pwm. [<pwm $channel _period>] .write(|w| unsafe {
+                    w.pwm_period().bits(
+                        period.integer().try_into().unwrap_or(u16::max_value())
+                    )
+                });
 
-                    // Set threshold 2 (should be in set duty)
-                    self.pwm. [<pwm $channel _thre2>] .write(|w| unsafe {
-                        w.pwm_thre2().bits(
-                            duty.integer().try_into().unwrap_or(u16::max_value())
-                        )
-                    });
-                )+
+                // Zero out threshold 1 (should be in set duty)
+                self.pwm. [<pwm $channel _thre1>] .write(|w| unsafe {
+                    w.pwm_thre1().bits(0)
+                });
+
+                // Set threshold 2 (should be in set duty)
+                self.pwm. [<pwm $channel _thre2>] .write(|w| unsafe {
+                    w.pwm_thre2().bits(
+                        duty.integer().try_into().unwrap_or(u16::max_value())
+                    )
+                });
 
                 Ok(())
             }
-        }
+        })+
     }}
 }
 

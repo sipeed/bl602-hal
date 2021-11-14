@@ -133,14 +133,14 @@ macro_rules! per_channel {
                     // Clock divider
                     self.pwm. [<pwm $channel _clkdiv>] .write(|w| unsafe {
                         w.pwm_clk_div().bits(
-                            clk_div.try_into().unwrap_or(u16::MAX)
+                            clk_div.try_into().unwrap_or(u16::max_value())
                         )
                     });
 
                     // Period
                     self.pwm. [<pwm $channel _period>] .write(|w| unsafe {
                         w.pwm_period().bits(
-                            period.integer().try_into().unwrap_or(u16::MAX)
+                            period.integer().try_into().unwrap_or(u16::max_value())
                         )
                     });
 
@@ -152,7 +152,7 @@ macro_rules! per_channel {
                     // Set threshold 2 (should be in set duty)
                     self.pwm. [<pwm $channel _thre2>] .write(|w| unsafe {
                         w.pwm_thre2().bits(
-                            duty.integer().try_into().unwrap_or(u16::MAX)
+                            duty.integer().try_into().unwrap_or(u16::max_value())
                         )
                     });
                 )+

@@ -13,7 +13,7 @@ jobs:
 
         include:
           # Run check with MSRV as well
-          - rust: 1.42.0
+          - rust: 1.59.0
 
     steps:
       - uses: actions/checkout@v2

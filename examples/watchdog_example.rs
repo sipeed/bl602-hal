@@ -24,6 +24,7 @@ use bl602_hal as hal;
 use core::cell::RefCell;
 use core::fmt::Write;
 use core::ops::DerefMut;
+use critical_section::{self, Mutex};
 use embedded_hal::delay::blocking::DelayMs;
 use embedded_hal::digital::blocking::{OutputPin, ToggleableOutputPin};
 use embedded_hal::watchdog::blocking::{Enable, Watchdog};
@@ -39,7 +40,6 @@ use hal::{
     watchdog::*,
 };
 use panic_halt as _;
-use riscv::interrupt::Mutex;
 
 // Setup custom types to make the code below easier to read:
 type RedLedPin = hal::gpio::Pin17<Output<PullDown>>;
@@ -115,8 +115,8 @@ fn main() -> ! {
     let watchdog = watchdog.start(10_u32.seconds()).unwrap();
 
     // Move the references to their UnsafeCells once initialized, and before interrupts are enabled:
-    riscv::interrupt::free(|cs| G_INTERRUPT_LED_PIN_R.borrow(cs).replace(Some(r_led_pin)));
-    riscv::interrupt::free(|cs| G_LED_TIMER.borrow(cs).replace(Some(watchdog)));
+    critical_section::with(|cs| G_INTERRUPT_LED_PIN_R.borrow(cs).replace(Some(r_led_pin)));
+    critical_section::with(|cs| G_LED_TIMER.borrow(cs).replace(Some(watchdog)));
 
     loop {
         // Since we delay for more than 10 seconds, the watchdog is only fed the first time through
@@ -124,7 +124,7 @@ fn main() -> ! {
         // milliseconds in the delay to less than 10 seconds.
 
         // In order to use the watchdog once it has been moved into the RefCell, you must call free():
-        riscv::interrupt::free(|cs| {
+        critical_section::with(|cs| {
             if let Some(watchdog) = G_LED_TIMER.borrow(cs).borrow_mut().deref_mut() {
                 watchdog.feed().ok();
             }
@@ -142,7 +142,7 @@ fn Watchdog(_: &mut TrapFrame) {
     clear_interrupt(Interrupt::Watchdog);
 
     //Clear the WDT interrupt flag and feed the watchdog to reset its counter:
-    riscv::interrupt::free(|cs| {
+    critical_section::with(|cs| {
         if let Some(watchdog) = G_LED_TIMER.borrow(cs).borrow_mut().deref_mut() {
             watchdog.clear_interrupt();
             watchdog.feed().ok();
@@ -150,7 +150,7 @@ fn Watchdog(_: &mut TrapFrame) {
     });
 
     // Toggle the red led whenever the interrupt is triggered:
-    riscv::interrupt::free(|cs| {
+    critical_section::with(|cs| {
         if let Some(led_pin) = G_INTERRUPT_LED_PIN_R.borrow(cs).borrow_mut().deref_mut() {
             led_pin.toggle().ok();
         }

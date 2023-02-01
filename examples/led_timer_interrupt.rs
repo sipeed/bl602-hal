@@ -16,8 +16,9 @@
 use bl602_hal as hal;
 use core::cell::RefCell;
 use core::ops::DerefMut;
-use embedded_hal::timer::nb::CountDown;
+use critical_section::{self, Mutex};
 use embedded_hal::digital::blocking::{OutputPin, ToggleableOutputPin};
+use embedded_hal::timer::nb::CountDown;
 use embedded_time::{duration::*, rate::*};
 use hal::{
     clock::{Strict, SysclkFreq},
@@ -28,7 +29,6 @@ use hal::{
     timer::*,
 };
 use panic_halt as _;
-use riscv::interrupt::Mutex;
 
 // Setup custom types to make the code below easier to read:
 type BlueLedPin = hal::gpio::Pin11<Output<PullDown>>;
@@ -93,9 +93,9 @@ fn main() -> ! {
     timer_ch1.enable();
 
     // Move the references to their UnsafeCells once initialized, and before interrupts are enabled:
-    riscv::interrupt::free(|cs| G_INTERRUPT_LED_PIN_B.borrow(cs).replace(Some(b_led_pin)));
-    riscv::interrupt::free(|cs| G_INTERRUPT_LED_PIN_G.borrow(cs).replace(Some(g_led_pin)));
-    riscv::interrupt::free(|cs| G_LED_TIMER.borrow(cs).replace(Some(timer_ch0)));
+    critical_section::with(|cs| G_INTERRUPT_LED_PIN_B.borrow(cs).replace(Some(b_led_pin)));
+    critical_section::with(|cs| G_INTERRUPT_LED_PIN_G.borrow(cs).replace(Some(g_led_pin)));
+    critical_section::with(|cs| G_LED_TIMER.borrow(cs).replace(Some(timer_ch0)));
 
     // Enable the timer interrupt only after pin and timer setup and move to global references:
     // If enabled before the needed variables are globally accessible, you won't be able to use
@@ -134,7 +134,7 @@ fn TimerCh0(_trap_frame: &mut TrapFrame) {
     let mut is_match2_interrupt: bool = false;
 
     // Clear the active timer interrupts and set the flags to let us decide how to handle each case:
-    riscv::interrupt::free(|cs| {
+    critical_section::with(|cs| {
         if let Some(timer) = G_LED_TIMER.borrow(cs).borrow_mut().deref_mut() {
             if timer.is_match0() {
                 timer.clear_match0_interrupt();
@@ -153,7 +153,7 @@ fn TimerCh0(_trap_frame: &mut TrapFrame) {
 
     // match0 controls the blue led pin:
     if is_match0_interrupt {
-        riscv::interrupt::free(|cs| {
+        critical_section::with(|cs| {
             if let Some(led_pin) = G_INTERRUPT_LED_PIN_B.borrow(cs).borrow_mut().deref_mut() {
                 led_pin.toggle().ok();
             }
@@ -162,7 +162,7 @@ fn TimerCh0(_trap_frame: &mut TrapFrame) {
 
     // match1 and match2 control the green led pin:
     if is_match1_interrupt || is_match2_interrupt {
-        riscv::interrupt::free(|cs| {
+        critical_section::with(|cs| {
             if let Some(led_pin) = G_INTERRUPT_LED_PIN_G.borrow(cs).borrow_mut().deref_mut() {
                 led_pin.toggle().ok();
             }

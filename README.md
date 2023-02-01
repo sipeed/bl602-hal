@@ -6,7 +6,7 @@ Matrix: [#bl602-rust:matrix.org](https://matrix.to/#/#bl602-rust:matrix.org)
 
 ## Minimum Supported Rust Version
 
-The minimum supported Rust version (MSRV) for this project is Rust **v1.42.0**. The
+The minimum supported Rust version (MSRV) for this project is Rust **v1.59.0**. The
 project might build on earlier versions, but this is the earliest version that
 is expected to work.
 

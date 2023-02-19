@@ -164,7 +164,7 @@ impl ConfiguredWatchdog0 {
     /// Check the value of the watchdog reset register (WTS) to see if a reset has occurred
     pub fn has_watchdog_reset_occurred(&self) -> bool {
         let timer = unsafe { &*pac::TIMER::ptr() };
-        timer.wsr.read().wts().bits() as bool
+        timer.wsr.read().wts().bit_is_set()
     }
 
     /// Clear the watchdog reset register (WTS)

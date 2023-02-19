@@ -13,7 +13,7 @@ description = "HAL for the bl602 microcontroller"
 bl602-pac = { git = "https://github.com/sipeed/bl602-pac", branch = "main" }
 embedded-hal = "=1.0.0-alpha.5"
 embedded-time = "0.12.0"
-riscv = { version = "0.10.1", features = ["critical-section-single-hart"] }
+riscv = "0.10.1"
 nb = "1.0"
 paste = "1.0"
 
@@ -31,3 +31,7 @@ critical-section = "1.1"
 
 [build-dependencies]
 riscv-target = "0.1.2"
+
+[features]
+default = ["critical-section-impl"]
+critical-section-impl = ["bl602-pac/critical-section", "riscv/critical-section-single-hart"]

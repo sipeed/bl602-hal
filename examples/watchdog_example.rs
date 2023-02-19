@@ -70,8 +70,8 @@ fn main() -> ! {
     let mux7 = gpio_pins.uart_mux7.into_uart0_rx();
 
     // Configure our UART to 2MBaud, and use the pins we configured above
-    let mut serial = Serial::uart0(
-        dp.UART,
+    let mut serial = Serial::new(
+        dp.UART0,
         Config::default().baudrate(2_000_000.Bd()),
         ((pin16, mux0), (pin7, mux7)),
         clocks,

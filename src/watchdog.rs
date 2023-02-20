@@ -184,7 +184,7 @@ impl ConfiguredWatchdog0 {
     /// Gets the value in ticks the match register is currently set to
     pub fn get_match_ticks(&self) -> u16 {
         let timer = unsafe { &*pac::TIMER::ptr() };
-        timer.wmr.read().wmr().bits() as u16
+        timer.wmr.read().wmr().bits()
     }
 
     /// Get the current value of the watchdog timer in nanoseconds
@@ -197,7 +197,7 @@ impl ConfiguredWatchdog0 {
     /// Get the current value in ticks of the watchdog timer
     pub fn get_current_ticks(&self) -> u16 {
         let timer = unsafe { &*pac::TIMER::ptr() };
-        timer.wvr.read().wvr().bits() as u16
+        timer.wvr.read().wvr().bits()
     }
 
     /// Get the current value of the watchdog timer in nanoseconds
@@ -210,7 +210,7 @@ impl ConfiguredWatchdog0 {
     /// Read the TCCR register containing the CS_WDT bits that select the clock source
     pub fn get_cs_wdt(&self) -> u8 {
         let timer = unsafe { &*pac::TIMER::ptr() };
-        timer.tccr.read().cs_wdt().bits() as u8
+        timer.tccr.read().cs_wdt().bits()
     }
 
     /// Read the WMER register's WRIE bit to see if the WDT is in Reset or Interrupt mode.

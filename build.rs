@@ -18,12 +18,12 @@ fn main() {
         let target = target.to_string();
 
         fs::copy(
-            format!("bin/trap_{}.a", target),
-            out_dir.join(format!("lib{}.a", name)),
+            format!("bin/trap_{target}.a"),
+            out_dir.join(format!("lib{name}.a")),
         )
         .unwrap();
 
-        println!("cargo:rustc-link-lib=static={}", name);
+        println!("cargo:rustc-link-lib=static={name}");
         println!("cargo:rustc-link-search={}", out_dir.display());
 
         // Put the linker script somewhere the linker can find it

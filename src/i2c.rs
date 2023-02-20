@@ -305,7 +305,7 @@ where
             }
             self.i2c
                 .i2c_fifo_wdata
-                .write(|w| unsafe { w.i2c_fifo_wdata().bits(*value as u32) });
+                .write(|w| unsafe { w.i2c_fifo_wdata().bits(*value) });
         }
 
         while self.i2c.i2c_bus_busy.read().sts_i2c_bus_busy().bit_is_set() {

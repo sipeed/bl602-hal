@@ -25,6 +25,8 @@ use embedded_time::rate::Hertz;
 
 use crate::{clock::Clocks, pac};
 
+use self::private::Sealed;
+
 /// I2C error
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
@@ -54,40 +56,40 @@ impl embedded_hal::i2c::Error for Error {
     }
 }
 
-/// SDA pins - DO NOT IMPLEMENT THIS TRAIT
-pub unsafe trait SdaPin<I2C> {}
+/// SDA pins
+pub trait SdaPin<I2C> : Sealed {}
 
-/// SCL pins - DO NOT IMPLEMENT THIS TRAIT
-pub unsafe trait SclPin<I2C> {}
+/// SCL pins
+pub trait SclPin<I2C>: Sealed {}
 
-/// I2C pins - DO NOT IMPLEMENT THIS TRAIT
-pub unsafe trait Pins<I2C> {}
+/// I2C pins
+pub trait Pins<I2C>: Sealed {}
 
-unsafe impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin0<MODE> {}
-unsafe impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin1<MODE> {}
-unsafe impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin2<MODE> {}
-unsafe impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin3<MODE> {}
-unsafe impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin4<MODE> {}
-unsafe impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin5<MODE> {}
-unsafe impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin6<MODE> {}
-unsafe impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin7<MODE> {}
-unsafe impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin8<MODE> {}
-unsafe impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin9<MODE> {}
-unsafe impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin10<MODE> {}
-unsafe impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin11<MODE> {}
-unsafe impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin12<MODE> {}
-unsafe impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin13<MODE> {}
-unsafe impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin14<MODE> {}
-unsafe impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin15<MODE> {}
-unsafe impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin16<MODE> {}
-unsafe impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin17<MODE> {}
-unsafe impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin18<MODE> {}
-unsafe impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin19<MODE> {}
-unsafe impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin20<MODE> {}
-unsafe impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin21<MODE> {}
-unsafe impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin22<MODE> {}
+impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin0<MODE> {}
+impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin1<MODE> {}
+impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin2<MODE> {}
+impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin3<MODE> {}
+impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin4<MODE> {}
+impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin5<MODE> {}
+impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin6<MODE> {}
+impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin7<MODE> {}
+impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin8<MODE> {}
+impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin9<MODE> {}
+impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin10<MODE> {}
+impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin11<MODE> {}
+impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin12<MODE> {}
+impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin13<MODE> {}
+impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin14<MODE> {}
+impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin15<MODE> {}
+impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin16<MODE> {}
+impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin17<MODE> {}
+impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin18<MODE> {}
+impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin19<MODE> {}
+impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin20<MODE> {}
+impl<MODE> SdaPin<pac::I2C> for crate::gpio::Pin21<MODE> {}
+impl<MODE> SclPin<pac::I2C> for crate::gpio::Pin22<MODE> {}
 
-unsafe impl<SCL, SDA> Pins<I2C> for (SCL, SDA)
+impl<SCL, SDA> Pins<I2C> for (SCL, SDA)
 where
     SCL: SclPin<I2C>,
     SDA: SdaPin<I2C>,
@@ -357,4 +359,43 @@ where
     fn write(&mut self, addr: u8, bytes: &[u8]) -> Result<(), Self::Error> {
         i2cAlpha::I2c::write(self, addr, bytes)
     }
+}
+
+// Prevent users from implementing the i2c pin traits
+mod private {
+    use super::{SclPin, SdaPin};
+    use crate::gpio;
+    use bl602_pac::I2C;
+
+    pub trait Sealed {}
+    impl<SCL, SDA> Sealed for (SCL, SDA)
+    where
+        SCL: SclPin<I2C>,
+        SDA: SdaPin<I2C>,
+    {
+    }
+
+    impl<MODE> Sealed for gpio::Pin0<MODE> {}
+    impl<MODE> Sealed for gpio::Pin1<MODE> {}
+    impl<MODE> Sealed for gpio::Pin2<MODE> {}
+    impl<MODE> Sealed for gpio::Pin3<MODE> {}
+    impl<MODE> Sealed for gpio::Pin4<MODE> {}
+    impl<MODE> Sealed for gpio::Pin5<MODE> {}
+    impl<MODE> Sealed for gpio::Pin6<MODE> {}
+    impl<MODE> Sealed for gpio::Pin7<MODE> {}
+    impl<MODE> Sealed for gpio::Pin8<MODE> {}
+    impl<MODE> Sealed for gpio::Pin9<MODE> {}
+    impl<MODE> Sealed for gpio::Pin10<MODE> {}
+    impl<MODE> Sealed for gpio::Pin11<MODE> {}
+    impl<MODE> Sealed for gpio::Pin12<MODE> {}
+    impl<MODE> Sealed for gpio::Pin13<MODE> {}
+    impl<MODE> Sealed for gpio::Pin14<MODE> {}
+    impl<MODE> Sealed for gpio::Pin15<MODE> {}
+    impl<MODE> Sealed for gpio::Pin16<MODE> {}
+    impl<MODE> Sealed for gpio::Pin17<MODE> {}
+    impl<MODE> Sealed for gpio::Pin18<MODE> {}
+    impl<MODE> Sealed for gpio::Pin19<MODE> {}
+    impl<MODE> Sealed for gpio::Pin20<MODE> {}
+    impl<MODE> Sealed for gpio::Pin21<MODE> {}
+    impl<MODE> Sealed for gpio::Pin22<MODE> {}
 }

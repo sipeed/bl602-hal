@@ -57,7 +57,7 @@ impl embedded_hal::i2c::Error for Error {
 }
 
 /// SDA pins
-pub trait SdaPin<I2C> : Sealed {}
+pub trait SdaPin<I2C>: Sealed {}
 
 /// SCL pins
 pub trait SclPin<I2C>: Sealed {}

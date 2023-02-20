@@ -2,6 +2,7 @@
 use crate::clock::Clocks;
 use crate::pac;
 use core::fmt;
+use core::ops::Deref;
 use embedded_hal::serial::nb::Write as WriteOne;
 use embedded_hal::serial::nb::Read as ReadOne;
 use embedded_time::rate::{Baud, Extensions};
@@ -148,12 +149,12 @@ pub struct Serial<UART, PINS> {
     pins: PINS,
 }
 
-impl<PINS> Serial<pac::UART, PINS>
+impl<UART, PINS> Serial<UART, PINS>
 where
-    PINS: Pins<pac::UART>,
+    UART: Deref<Target = pac::uart0::RegisterBlock>,
+    PINS: Pins<UART>,
 {
-    // todo: there is UART0 and UART1
-    pub fn uart0(uart: pac::UART, config: Config, pins: PINS, clocks: Clocks) -> Self {
+    pub fn new(uart: UART, config: Config, pins: PINS, clocks: Clocks) -> Self {
         // Initialize clocks and baudrate
         let uart_clk = clocks.uart_clk();
         let baud = config.baudrate.0;
@@ -246,13 +247,16 @@ where
         Serial { uart, pins }
     }
 
-    pub fn free(self) -> (pac::UART, PINS) {
+    pub fn free(self) -> (UART, PINS) {
         // todo!
         (self.uart, self.pins)
     }
 }
 
-impl<PINS> embedded_hal::serial::nb::Write<u8> for Serial<pac::UART, PINS> {
+impl<UART, PINS> embedded_hal::serial::nb::Write<u8> for Serial<UART, PINS>
+where
+    UART: Deref<Target = pac::uart0::RegisterBlock>,
+{
     type Error = Error;
 
     fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
@@ -279,7 +283,10 @@ impl<PINS> embedded_hal::serial::nb::Write<u8> for Serial<pac::UART, PINS> {
     }
 }
 
-impl<PINS> embedded_hal::serial::nb::Read<u8> for Serial<pac::UART, PINS> {
+impl<UART, PINS> embedded_hal::serial::nb::Read<u8> for Serial<UART, PINS>
+where
+    UART: Deref<Target = pac::uart0::RegisterBlock>,
+{
     type Error = Error;
 
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
@@ -293,7 +300,10 @@ impl<PINS> embedded_hal::serial::nb::Read<u8> for Serial<pac::UART, PINS> {
     }
 }
 
-impl<PINS> embedded_hal_zero::serial::Write<u8> for Serial<pac::UART, PINS> {
+impl<UART, PINS> embedded_hal_zero::serial::Write<u8> for Serial<UART, PINS>
+where
+    UART: Deref<Target = pac::uart0::RegisterBlock>,
+{
     type Error = Error;
 
     fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
@@ -305,7 +315,10 @@ impl<PINS> embedded_hal_zero::serial::Write<u8> for Serial<pac::UART, PINS> {
     }
 }
 
-impl<PINS> embedded_hal_zero::serial::Read<u8> for Serial<pac::UART, PINS> {
+impl<UART, PINS> embedded_hal_zero::serial::Read<u8> for Serial<UART, PINS>
+where
+    UART: Deref<Target = pac::uart0::RegisterBlock>,
+{
     type Error = Error;
 
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
@@ -338,14 +351,15 @@ macro_rules! impl_uart_pin {
     ($(($UartSigi: ident, $UartMuxi: ident),)+) => {
         use crate::gpio::*;
         $(
-        unsafe impl<PIN: UartPin<$UartSigi>> TxPin<pac::UART> for (PIN, $UartMuxi<Uart0Tx>) {}
-        unsafe impl<PIN: UartPin<$UartSigi>> RxPin<pac::UART> for (PIN, $UartMuxi<Uart0Rx>) {}
-        unsafe impl<PIN: UartPin<$UartSigi>> RtsPin<pac::UART> for (PIN, $UartMuxi<Uart0Rts>) {}
-        unsafe impl<PIN: UartPin<$UartSigi>> CtsPin<pac::UART> for (PIN, $UartMuxi<Uart0Cts>) {}
-        // unsafe impl<PIN: UartPin, SIG: UartSig<Uart1Tx>> TxPin<pac::UART> for (PIN, SIG) {}
-        // unsafe impl<PIN: UartPin, SIG: UartSig<Uart1Rx>> RxPin<pac::UART> for (PIN, SIG) {}
-        // unsafe impl<PIN: UartPin, SIG: UartSig<Uart1Rts>> RtsPin<pac::UART> for (PIN, SIG) {}
-        // unsafe impl<PIN: UartPin, SIG: UartSig<Uart1Cts>> CtsPin<pac::UART> for (PIN, SIG) {}
+        unsafe impl<PIN: UartPin<$UartSigi>> TxPin<pac::UART0> for (PIN, $UartMuxi<Uart0Tx>) {}
+        unsafe impl<PIN: UartPin<$UartSigi>> RxPin<pac::UART0> for (PIN, $UartMuxi<Uart0Rx>) {}
+        unsafe impl<PIN: UartPin<$UartSigi>> RtsPin<pac::UART0> for (PIN, $UartMuxi<Uart0Rts>) {}
+        unsafe impl<PIN: UartPin<$UartSigi>> CtsPin<pac::UART0> for (PIN, $UartMuxi<Uart0Cts>) {}
+
+        unsafe impl<PIN: UartPin<$UartSigi>> TxPin<pac::UART1> for (PIN, $UartMuxi<Uart1Tx>) {}
+        unsafe impl<PIN: UartPin<$UartSigi>> RxPin<pac::UART1> for (PIN, $UartMuxi<Uart1Rx>) {}
+        unsafe impl<PIN: UartPin<$UartSigi>> RtsPin<pac::UART1> for (PIN, $UartMuxi<Uart1Rts>) {}
+        unsafe impl<PIN: UartPin<$UartSigi>> CtsPin<pac::UART1> for (PIN, $UartMuxi<Uart1Cts>) {}
         )+
     };
 }

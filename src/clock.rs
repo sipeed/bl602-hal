@@ -207,7 +207,7 @@ impl Strict {
         let uart_clk = self
             .target_uart_clk
             .map(|f| f.get())
-            .unwrap_or(uart_clk_src as u32);
+            .unwrap_or(uart_clk_src);
 
         let uart_clk_div = {
             let ans = uart_clk_src / uart_clk;
@@ -599,7 +599,7 @@ fn aon_power_on_xtal() -> Result<(), &'static str> {
 fn hbn_set_root_clk_sel_pll() {
     unsafe { &*pac::HBN::ptr() }.hbn_glb.modify(|r, w| unsafe {
         w.hbn_root_clk_sel()
-            .bits(r.hbn_root_clk_sel().bits() as u8 | 0b10u8)
+            .bits(r.hbn_root_clk_sel().bits() | 0b10u8)
     });
 }
 

@@ -65,46 +65,46 @@ pub enum SpiBitFormat {
     MsbFirst,
 }
 
-/// MISO pins - DO NOT IMPLEMENT THIS TRAIT
-pub unsafe trait MisoPin<SPI> {}
+/// MISO pins
+pub trait MisoPin<SPI>: private::Sealed {}
 
-/// MOSI pins - DO NOT IMPLEMENT THIS TRAIT
-pub unsafe trait MosiPin<SPI> {}
+/// MOSI pins
+pub trait MosiPin<SPI>: private::Sealed {}
 
-/// SS pins - DO NOT IMPLEMENT THIS TRAIT
-pub unsafe trait SsPin<SPI> {}
+/// SS pins
+pub trait SsPin<SPI>: private::Sealed {}
 
-/// SCLK pins - DO NOT IMPLEMENT THIS TRAIT
-pub unsafe trait SclkPin<SPI> {}
+/// SCLK pins
+pub trait SclkPin<SPI>: private::Sealed {}
 
-/// Spi pins - DO NOT IMPLEMENT THIS TRAIT
-pub unsafe trait Pins<SPI> {}
+/// Spi pins
+pub trait Pins<SPI>: private::Sealed {}
 
-unsafe impl<MODE> MisoPin<pac::SPI> for crate::gpio::Pin0<MODE> {}
-unsafe impl<MODE> MosiPin<pac::SPI> for crate::gpio::Pin1<MODE> {}
-unsafe impl<MODE> SsPin<pac::SPI> for crate::gpio::Pin2<MODE> {}
-unsafe impl<MODE> SclkPin<pac::SPI> for crate::gpio::Pin3<MODE> {}
-unsafe impl<MODE> MisoPin<pac::SPI> for crate::gpio::Pin4<MODE> {}
-unsafe impl<MODE> MosiPin<pac::SPI> for crate::gpio::Pin5<MODE> {}
-unsafe impl<MODE> SsPin<pac::SPI> for crate::gpio::Pin6<MODE> {}
-unsafe impl<MODE> SclkPin<pac::SPI> for crate::gpio::Pin7<MODE> {}
-unsafe impl<MODE> MisoPin<pac::SPI> for crate::gpio::Pin8<MODE> {}
-unsafe impl<MODE> MosiPin<pac::SPI> for crate::gpio::Pin9<MODE> {}
-unsafe impl<MODE> SsPin<pac::SPI> for crate::gpio::Pin10<MODE> {}
-unsafe impl<MODE> SclkPin<pac::SPI> for crate::gpio::Pin11<MODE> {}
-unsafe impl<MODE> MisoPin<pac::SPI> for crate::gpio::Pin12<MODE> {}
-unsafe impl<MODE> MosiPin<pac::SPI> for crate::gpio::Pin13<MODE> {}
-unsafe impl<MODE> SsPin<pac::SPI> for crate::gpio::Pin14<MODE> {}
-unsafe impl<MODE> SclkPin<pac::SPI> for crate::gpio::Pin15<MODE> {}
-unsafe impl<MODE> MisoPin<pac::SPI> for crate::gpio::Pin16<MODE> {}
-unsafe impl<MODE> MosiPin<pac::SPI> for crate::gpio::Pin17<MODE> {}
-unsafe impl<MODE> SsPin<pac::SPI> for crate::gpio::Pin18<MODE> {}
-unsafe impl<MODE> SclkPin<pac::SPI> for crate::gpio::Pin19<MODE> {}
-unsafe impl<MODE> MisoPin<pac::SPI> for crate::gpio::Pin20<MODE> {}
-unsafe impl<MODE> MosiPin<pac::SPI> for crate::gpio::Pin21<MODE> {}
-unsafe impl<MODE> SsPin<pac::SPI> for crate::gpio::Pin22<MODE> {}
+impl<MODE> MisoPin<pac::SPI> for crate::gpio::Pin0<MODE> {}
+impl<MODE> MosiPin<pac::SPI> for crate::gpio::Pin1<MODE> {}
+impl<MODE> SsPin<pac::SPI> for crate::gpio::Pin2<MODE> {}
+impl<MODE> SclkPin<pac::SPI> for crate::gpio::Pin3<MODE> {}
+impl<MODE> MisoPin<pac::SPI> for crate::gpio::Pin4<MODE> {}
+impl<MODE> MosiPin<pac::SPI> for crate::gpio::Pin5<MODE> {}
+impl<MODE> SsPin<pac::SPI> for crate::gpio::Pin6<MODE> {}
+impl<MODE> SclkPin<pac::SPI> for crate::gpio::Pin7<MODE> {}
+impl<MODE> MisoPin<pac::SPI> for crate::gpio::Pin8<MODE> {}
+impl<MODE> MosiPin<pac::SPI> for crate::gpio::Pin9<MODE> {}
+impl<MODE> SsPin<pac::SPI> for crate::gpio::Pin10<MODE> {}
+impl<MODE> SclkPin<pac::SPI> for crate::gpio::Pin11<MODE> {}
+impl<MODE> MisoPin<pac::SPI> for crate::gpio::Pin12<MODE> {}
+impl<MODE> MosiPin<pac::SPI> for crate::gpio::Pin13<MODE> {}
+impl<MODE> SsPin<pac::SPI> for crate::gpio::Pin14<MODE> {}
+impl<MODE> SclkPin<pac::SPI> for crate::gpio::Pin15<MODE> {}
+impl<MODE> MisoPin<pac::SPI> for crate::gpio::Pin16<MODE> {}
+impl<MODE> MosiPin<pac::SPI> for crate::gpio::Pin17<MODE> {}
+impl<MODE> SsPin<pac::SPI> for crate::gpio::Pin18<MODE> {}
+impl<MODE> SclkPin<pac::SPI> for crate::gpio::Pin19<MODE> {}
+impl<MODE> MisoPin<pac::SPI> for crate::gpio::Pin20<MODE> {}
+impl<MODE> MosiPin<pac::SPI> for crate::gpio::Pin21<MODE> {}
+impl<MODE> SsPin<pac::SPI> for crate::gpio::Pin22<MODE> {}
 
-unsafe impl<MISO, MOSI, SS, SCLK> Pins<SPI> for (MISO, MOSI, SS, SCLK)
+impl<MISO, MOSI, SS, SCLK> Pins<SPI> for (MISO, MOSI, SS, SCLK)
 where
     MISO: MisoPin<SPI>,
     MOSI: MosiPin<SPI>,
@@ -113,12 +113,63 @@ where
 {
 }
 
-unsafe impl<MISO, MOSI, SCLK> Pins<SPI> for (MISO, MOSI, SCLK)
+impl<MISO, MOSI, SCLK> Pins<SPI> for (MISO, MOSI, SCLK)
 where
     MISO: MisoPin<SPI>,
     MOSI: MosiPin<SPI>,
     SCLK: SclkPin<SPI>,
 {
+}
+
+// Prevent users from implementing the SPI pin traits
+mod private {
+    use bl602_pac::SPI;
+
+    use crate::gpio;
+
+    use super::{MisoPin, MosiPin, SclkPin, SsPin};
+
+    pub trait Sealed {}
+    impl<MISO, MOSI, SCLK> Sealed for (MISO, MOSI, SCLK)
+    where
+        MISO: MisoPin<SPI>,
+        MOSI: MosiPin<SPI>,
+        SCLK: SclkPin<SPI>,
+    {
+    }
+
+    impl<MISO, MOSI, SS, SCLK> Sealed for (MISO, MOSI, SS, SCLK)
+    where
+        MISO: MisoPin<SPI>,
+        MOSI: MosiPin<SPI>,
+        SS: SsPin<SPI>,
+        SCLK: SclkPin<SPI>,
+    {
+    }
+
+    impl<MODE> Sealed for gpio::Pin0<MODE> {}
+    impl<MODE> Sealed for gpio::Pin1<MODE> {}
+    impl<MODE> Sealed for gpio::Pin2<MODE> {}
+    impl<MODE> Sealed for gpio::Pin3<MODE> {}
+    impl<MODE> Sealed for gpio::Pin4<MODE> {}
+    impl<MODE> Sealed for gpio::Pin5<MODE> {}
+    impl<MODE> Sealed for gpio::Pin6<MODE> {}
+    impl<MODE> Sealed for gpio::Pin7<MODE> {}
+    impl<MODE> Sealed for gpio::Pin8<MODE> {}
+    impl<MODE> Sealed for gpio::Pin9<MODE> {}
+    impl<MODE> Sealed for gpio::Pin10<MODE> {}
+    impl<MODE> Sealed for gpio::Pin11<MODE> {}
+    impl<MODE> Sealed for gpio::Pin12<MODE> {}
+    impl<MODE> Sealed for gpio::Pin13<MODE> {}
+    impl<MODE> Sealed for gpio::Pin14<MODE> {}
+    impl<MODE> Sealed for gpio::Pin15<MODE> {}
+    impl<MODE> Sealed for gpio::Pin16<MODE> {}
+    impl<MODE> Sealed for gpio::Pin17<MODE> {}
+    impl<MODE> Sealed for gpio::Pin18<MODE> {}
+    impl<MODE> Sealed for gpio::Pin19<MODE> {}
+    impl<MODE> Sealed for gpio::Pin20<MODE> {}
+    impl<MODE> Sealed for gpio::Pin21<MODE> {}
+    impl<MODE> Sealed for gpio::Pin22<MODE> {}
 }
 
 /// A Serial Peripheral Interface

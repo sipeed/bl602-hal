@@ -31,6 +31,12 @@ extern "C" {
     fn TimerCh0(trap_frame: &mut TrapFrame);
     fn TimerCh1(trap_frame: &mut TrapFrame);
     fn Watchdog(trap_frame: &mut TrapFrame);
+    fn Dma(trap_frame: &mut TrapFrame);
+    fn Spi(trap_frame: &mut TrapFrame);
+    fn Uart0(trap_frame: &mut TrapFrame);
+    fn Uart1(trap_frame: &mut TrapFrame);
+    fn I2c(trap_frame: &mut TrapFrame);
+    fn Pwm(trap_frame: &mut TrapFrame);
 }
 
 // see components\bl602\bl602_std\bl602_std\RISCV\Core\Include\clic.h
@@ -40,10 +46,16 @@ const CLIC_HART0_ADDR: u32 = 0x02800000;
 const CLIC_INTIE: u32 = 0x400;
 const CLIC_INTIP: u32 = 0x000;
 
-const GPIO_IRQ: u32 = IRQ_NUM_BASE + 44;
+const DMA0_IRQ: u32 = IRQ_NUM_BASE + 15;
+const SPI0_IRQ: u32 = IRQ_NUM_BASE + 27;
+const UART0_IRQ: u32 = IRQ_NUM_BASE + 29;
+const UART1_IRQ: u32 = IRQ_NUM_BASE + 30;
+const I2C0_IRQ: u32 = IRQ_NUM_BASE + 32;
+const PWM_IRQ: u32 = IRQ_NUM_BASE + 34;
 const TIMER_CH0_IRQ: u32 = IRQ_NUM_BASE + 36;
 const TIMER_CH1_IRQ: u32 = IRQ_NUM_BASE + 37;
 const WATCHDOG_IRQ: u32 = IRQ_NUM_BASE + 38;
+const GPIO_IRQ: u32 = IRQ_NUM_BASE + 44;
 
 #[doc(hidden)]
 #[no_mangle]
@@ -141,6 +153,12 @@ pub unsafe extern "C" fn start_trap_rust_hal(trap_frame: *mut TrapFrame) {
                 Interrupt::TimerCh0 => TimerCh0(trap_frame.as_mut().unwrap()),
                 Interrupt::TimerCh1 => TimerCh1(trap_frame.as_mut().unwrap()),
                 Interrupt::Watchdog => Watchdog(trap_frame.as_mut().unwrap()),
+                Interrupt::Dma => Dma(trap_frame.as_mut().unwrap()),
+                Interrupt::Spi => Spi(trap_frame.as_mut().unwrap()),
+                Interrupt::Uart0 => Uart0(trap_frame.as_mut().unwrap()),
+                Interrupt::Uart1 => Uart1(trap_frame.as_mut().unwrap()),
+                Interrupt::I2c => I2c(trap_frame.as_mut().unwrap()),
+                Interrupt::Pwm => Pwm(trap_frame.as_mut().unwrap()),
             };
         }
     }
@@ -159,6 +177,18 @@ pub enum Interrupt {
     /// Watchdog Timer Interrupt
     /// Used when WDT is configured in Interrupt mode using ConfiguredWatchdog0::set_mode()
     Watchdog,
+    /// DMA Interrupt
+    Dma,
+    /// SPI Interrupt
+    Spi,
+    /// UART Port 0 Interrupt
+    Uart0,
+    /// UART Port 1 Interrupt
+    Uart1,
+    /// I2C Interrupt
+    I2c,
+    /// PWM Interrupt
+    Pwm,
 }
 
 impl Interrupt {
@@ -169,6 +199,12 @@ impl Interrupt {
             Interrupt::TimerCh0 => TIMER_CH0_IRQ,
             Interrupt::TimerCh1 => TIMER_CH1_IRQ,
             Interrupt::Watchdog => WATCHDOG_IRQ,
+            Interrupt::Dma => DMA0_IRQ,
+            Interrupt::Spi => SPI0_IRQ,
+            Interrupt::Uart0 => UART0_IRQ,
+            Interrupt::Uart1 => UART1_IRQ,
+            Interrupt::I2c => I2C0_IRQ,
+            Interrupt::Pwm => PWM_IRQ,
         }
     }
 
@@ -178,6 +214,12 @@ impl Interrupt {
             TIMER_CH0_IRQ => Interrupt::TimerCh0,
             TIMER_CH1_IRQ => Interrupt::TimerCh1,
             WATCHDOG_IRQ => Interrupt::Watchdog,
+            DMA0_IRQ => Interrupt::Dma,
+            SPI0_IRQ => Interrupt::Spi,
+            UART0_IRQ => Interrupt::Uart0,
+            UART1_IRQ => Interrupt::Uart1,
+            I2C0_IRQ => Interrupt::I2c,
+            PWM_IRQ => Interrupt::Pwm,
             _ => Interrupt::Unknown,
         }
     }

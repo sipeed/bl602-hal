@@ -44,6 +44,7 @@ pub mod rtc;
 pub mod serial;
 pub mod spi;
 pub mod timer;
+pub mod typelevel;
 pub mod watchdog;
 
 /// HAL crate prelude

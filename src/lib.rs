@@ -37,6 +37,7 @@ pub use bl602_pac as pac;
 pub mod checksum;
 pub mod clock;
 pub mod delay;
+pub mod dma;
 pub mod gpio;
 pub mod i2c;
 pub mod interrupts;
@@ -44,6 +45,7 @@ pub mod rtc;
 pub mod serial;
 pub mod spi;
 pub mod timer;
+pub mod typelevel;
 pub mod watchdog;
 
 /// HAL crate prelude

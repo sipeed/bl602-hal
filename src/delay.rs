@@ -1,6 +1,5 @@
 //! Delays
 
-use core::convert::Infallible;
 use embedded_hal_zero::blocking::delay::{DelayMs as DelayMsZero, DelayUs as DelayUsZero};
 use embedded_hal::delay::DelayUs;
 

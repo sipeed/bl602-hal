@@ -19,8 +19,6 @@
 
 use bl602_pac::I2C;
 use embedded_hal::i2c as i2cAlpha;
-// use embedded_hal::i2c::Read as ReadAlpha;
-// use embedded_hal::i2c::Write as WriteAlpha;
 use embedded_hal_zero::blocking::i2c::Read as ReadZero;
 use embedded_hal_zero::blocking::i2c::Write as WriteZero;
 use embedded_time::rate::Hertz;

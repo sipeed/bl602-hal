@@ -3,8 +3,8 @@
 
 use bl602_hal as hal;
 use core::mem::MaybeUninit;
-use embedded_hal::digital::blocking::OutputPin;
-use embedded_hal::digital::blocking::StatefulOutputPin;
+use embedded_hal::digital::OutputPin;
+use embedded_hal::digital::StatefulOutputPin;
 use hal::{interrupts::*, pac, prelude::*};
 use panic_halt as _;
 

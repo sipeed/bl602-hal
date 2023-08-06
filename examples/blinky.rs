@@ -2,8 +2,8 @@
 #![no_main]
 
 use bl602_hal as hal;
-use embedded_hal::delay::blocking::DelayMs;
-use embedded_hal::digital::blocking::OutputPin;
+use embedded_hal::delay::DelayUs;
+use embedded_hal::digital::OutputPin;
 use hal::{
     clock::{Strict, SysclkFreq, UART_PLL_FREQ},
     pac,
@@ -30,9 +30,9 @@ fn main() -> ! {
 
     loop {
         gpio5.set_high().unwrap();
-        d.delay_ms(1000).unwrap();
+        d.delay_ms(1000);
 
         gpio5.set_low().unwrap();
-        d.delay_ms(1000).unwrap();
+        d.delay_ms(1000);
     }
 }

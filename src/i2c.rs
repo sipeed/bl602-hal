@@ -19,8 +19,8 @@
 
 use bl602_pac::I2C;
 use embedded_hal::i2c as i2cAlpha;
-use embedded_hal::i2c::blocking::Read as ReadAlpha;
-use embedded_hal::i2c::blocking::Write as WriteAlpha;
+// use embedded_hal::i2c::Read as ReadAlpha;
+// use embedded_hal::i2c::Write as WriteAlpha;
 use embedded_hal_zero::blocking::i2c::Read as ReadZero;
 use embedded_hal_zero::blocking::i2c::Write as WriteZero;
 use embedded_time::rate::Hertz;
@@ -175,12 +175,10 @@ where
     }
 }
 
-impl<PINS> ReadAlpha<i2cAlpha::SevenBitAddress> for I2c<pac::I2C, PINS>
+impl<PINS> i2cAlpha::I2c<i2cAlpha::SevenBitAddress> for I2c<pac::I2C, PINS>
 where
     PINS: Pins<pac::I2C>,
 {
-    type Error = Error;
-
     fn read(
         &mut self,
         address: i2cAlpha::SevenBitAddress,
@@ -243,13 +241,6 @@ where
 
         Ok(())
     }
-}
-
-impl<PINS> WriteAlpha<i2cAlpha::SevenBitAddress> for I2c<pac::I2C, PINS>
-where
-    PINS: Pins<pac::I2C>,
-{
-    type Error = Error;
 
     fn write(
         &mut self,
@@ -327,7 +318,7 @@ where
     type Error = Error;
 
     fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error> {
-        ReadAlpha::read(self, address, buffer)
+        i2cAlpha::I2c::read(self, address, buffer)
     }
 }
 
@@ -338,6 +329,6 @@ where
     type Error = Error;
 
     fn write(&mut self, addr: u8, bytes: &[u8]) -> Result<(), Self::Error> {
-        WriteAlpha::write(self, addr, bytes)
+        i2cAlpha::I2c::write(self, addr, bytes)
     }
 }

@@ -4,6 +4,7 @@ use crate::pac;
 use core::fmt;
 use core::ops::Deref;
 use embedded_hal_nb;
+use embedded_hal_nb::serial::Write;
 use embedded_time::rate::{Baud, Extensions};
 use nb::block;
 

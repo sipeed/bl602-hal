@@ -294,9 +294,7 @@ macro_rules! impl_timer_channel {
             }
         }
 
-        impl embedded_hal::timer::nb::CountDown for $conf_name {
-            type Error = CountDownError;
-
+        impl embedded_hal_zero::timer::CountDown for $conf_name {
             type Time = Nanoseconds::<u64>;
 
             fn start<T>(&mut self, count: T) -> Result<(), Self::Error>

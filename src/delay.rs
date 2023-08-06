@@ -44,43 +44,33 @@ impl McycleDelay {
     }
 }
 
-// Embedded Hal 1.0 traits
+// embedded-hal 1.0 traits
 impl DelayUs for McycleDelay {
     /// Performs a busy-wait loop until the number of microseconds `us` has elapsed
     #[inline]
-    fn delay_us(&mut self, us: u64) -> Result<(), Infallible> {
-        McycleDelay::delay_cycles((us * (self.core_frequency as u64)) / 1_000_000);
-
-        Ok(())
+    fn delay_us(&mut self, us: u32) {
+        McycleDelay::delay_cycles((us as u64 * (self.core_frequency as u64)) / 1_000_000);
     }
     /// Performs a busy-wait loop until the number of milliseconds `ms` has elapsed
     #[inline]
-    fn delay_ms(&mut self, ms: u64) -> Result<(), Infallible> {
-        McycleDelay::delay_cycles((ms * (self.core_frequency as u64)) / 1000);
-
-        Ok(())
+    fn delay_ms(&mut self, ms: u32) {
+        McycleDelay::delay_cycles((ms as u64 * (self.core_frequency as u64)) / 1000);
     }
 }
 
-// Embedded-hal 0.2 traits
-
-// Embedded Hal 1.0 traits
+// embedded-hal 0.2 traits
 impl DelayUsZero<u64> for McycleDelay {
     /// Performs a busy-wait loop until the number of microseconds `us` has elapsed
     #[inline]
-    fn delay_us(&mut self, us: u64) -> Result<(), Infallible> {
+    fn delay_us(&mut self, us: u64) {
         McycleDelay::delay_cycles((us * (self.core_frequency as u64)) / 1_000_000);
-
-        Ok(())
     }
 }
 
 impl DelayMsZero<u64> for McycleDelay {
     /// Performs a busy-wait loop until the number of milliseconds `ms` has elapsed
     #[inline]
-    fn delay_ms(&mut self, ms: u64) -> Result<(), Infallible> {
+    fn delay_ms(&mut self, ms: u64) {
         McycleDelay::delay_cycles((ms * (self.core_frequency as u64)) / 1000);
-
-        Ok(())
     }
 }

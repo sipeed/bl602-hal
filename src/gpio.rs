@@ -280,7 +280,7 @@ macro_rules! impl_glb {
         pub mod pin {
             use core::marker::PhantomData;
             use core::convert::Infallible;
-            use embedded_hal::digital::blocking::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
+            use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
             use embedded_hal_zero::digital::v2::{
                 InputPin as InputPinZero,
                 OutputPin as OutputPinZero,
@@ -456,8 +456,6 @@ macro_rules! impl_glb {
 
 
             impl<MODE> InputPin for $Pini<Input<MODE>> {
-                type Error = Infallible;
-
                 fn is_high(&self) -> Result<bool, Self::Error> {
                     Ok(self.is_high_inner())
                 }
@@ -540,8 +538,6 @@ macro_rules! impl_glb {
 
 
             impl<MODE> OutputPin for $Pini<Output<MODE>> {
-                type Error = Infallible;
-
                 fn set_high(&mut self) -> Result<(), Self::Error> {
                     self.set_high_inner();
                     Ok(())
@@ -589,8 +585,6 @@ macro_rules! impl_glb {
 
 
             impl<MODE> ToggleableOutputPin for $Pini<Output<MODE>> {
-                type Error = Infallible;
-
                 fn toggle(&mut self) -> Result<(), Self::Error> {
                     if self.is_output_high_inner() {
                         self.set_low_inner()

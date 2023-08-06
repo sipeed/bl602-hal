@@ -42,6 +42,18 @@ pub enum Error {
     Timeout,
 }
 
+impl embedded_hal::i2c::Error for Error {
+    fn kind(&self) -> embedded_hal::i2c::ErrorKind {
+        match self {
+            Self::RxOverflow => embedded_hal::i2c::ErrorKind::Overrun,
+            Self::TxOverflow => embedded_hal::i2c::ErrorKind::Overrun,
+            Self::RxUnderflow => embedded_hal::i2c::ErrorKind::Overrun,
+            Self::TxUnderflow => embedded_hal::i2c::ErrorKind::Overrun,
+            Self::Timeout => embedded_hal::i2c::ErrorKind::NoAcknowledge(embedded_hal::i2c::NoAcknowledgeSource::Address),
+        }
+    }
+}
+
 /// SDA pins - DO NOT IMPLEMENT THIS TRAIT
 pub unsafe trait SdaPin<I2C> {}
 

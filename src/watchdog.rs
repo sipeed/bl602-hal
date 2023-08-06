@@ -232,33 +232,30 @@ impl ConfiguredWatchdog0 {
 impl embedded_hal_zero::watchdog::Watchdog for ConfiguredWatchdog0 {
     /// This feeds the watchdog by resetting its counter value to 0.
     /// WCR register is write-only, no need to preserve register contents
-    fn feed(&mut self) -> Result<(), WatchdogError> {
+    fn feed(&mut self) -> () {
         let timer = unsafe { &*pac::TIMER::ptr() };
         send_access_codes();
         timer.wcr.write(|w| w.wcr().set_bit());
-        Ok(())
     }
 }
 
 impl embedded_hal_zero::watchdog::WatchdogDisable for ConfiguredWatchdog0 {
-    fn disable(self) -> Result<ConfiguredWatchdog0, WatchdogError> {
+    fn disable(&mut self) {
         let timer = unsafe { &*pac::TIMER::ptr() };
         send_access_codes();
         timer.wmer.write(|w| w.we().clear_bit());
-        Ok(self)
     }
 }
 
 impl embedded_hal_zero::watchdog::WatchdogEnable for ConfiguredWatchdog0 {
     type Time = Nanoseconds<u64>;
 
-    fn start<T>(self, period: T) -> Result<ConfiguredWatchdog0, WatchdogError>
+    fn start<T>(&mut self, period: T)
     where
         T: Into<Self::Time>,
     {
         self.set_timeout(period);
         self.enable();
-        Ok(self)
     }
 }
 

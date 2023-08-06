@@ -252,6 +252,10 @@ where
     }
 }
 
+impl<UART, PINS>  embedded_hal_nb::serial::ErrorType for Serial<UART, PINS>{
+    type Error = Error;
+}
+
 impl<UART, PINS> embedded_hal_nb::serial::Write for Serial<UART, PINS>
 where
     UART: Deref<Target = pac::uart0::RegisterBlock>,

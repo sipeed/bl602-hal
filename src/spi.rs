@@ -45,6 +45,17 @@ pub enum Error {
     TxUnderflow,
 }
 
+impl embedded_hal_nb::spi::Error for Error {
+    fn kind(&self) -> embedded_hal_nb::spi::ErrorKind {
+        match self {
+            Self::RxOverflow => embedded_hal_nb::spi::ErrorKind::Overrun,
+            Self::TxOverflow => embedded_hal_nb::spi::ErrorKind::Overrun,
+            Self::RxUnderflow => embedded_hal_nb::spi::ErrorKind::Overrun,
+            Self::TxUnderflow => embedded_hal_nb::spi::ErrorKind::Overrun,
+        }
+    }
+}
+
 /// The bit format to send the data in
 #[derive(Debug, Clone, Copy)]
 pub enum SpiBitFormat {
@@ -211,6 +222,12 @@ where
             .write(|w| w.rx_fifo_clr().set_bit().tx_fifo_clr().set_bit());
     }
 }
+
+
+impl<PINS> embedded_hal_nb::spi::ErrorType for Spi<pac::SPI, PINS>{
+    type Error = Error;
+}
+
 
 impl<PINS> embedded_hal_nb::spi::FullDuplex<u8> for Spi<pac::SPI, PINS>
 where

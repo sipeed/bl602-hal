@@ -175,6 +175,10 @@ where
     }
 }
 
+impl<PINS> i2cAlpha::ErrorType for  I2c<pac::I2C, PINS> {
+    type Error = Error;
+}
+
 impl<PINS> i2cAlpha::I2c<i2cAlpha::SevenBitAddress> for I2c<pac::I2C, PINS>
 where
     PINS: Pins<pac::I2C>,

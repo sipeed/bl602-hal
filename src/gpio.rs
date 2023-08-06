@@ -454,6 +454,9 @@ macro_rules! impl_glb {
                 }
             }
 
+            impl<MODE> embedded_hal::digital::ErrorType for $Pini<Input<MODE>> {
+                type Error = Infallible;
+            }
 
             impl<MODE> InputPin for $Pini<Input<MODE>> {
                 fn is_high(&self) -> Result<bool, Self::Error> {
@@ -536,6 +539,9 @@ macro_rules! impl_glb {
                 }
             }
 
+            impl<MODE> embedded_hal::digital::ErrorType for $Pini<Output<MODE>> {
+                type Error = Infallible;
+            }
 
             impl<MODE> OutputPin for $Pini<Output<MODE>> {
                 fn set_high(&mut self) -> Result<(), Self::Error> {

@@ -3,8 +3,7 @@ use crate::clock::Clocks;
 use crate::pac;
 use core::fmt;
 use core::ops::Deref;
-use embedded_hal::serial::nb::Write as WriteOne;
-use embedded_hal::serial::nb::Read as ReadOne;
+use embedded_hal_nb;
 use embedded_time::rate::{Baud, Extensions};
 use nb::block;
 
@@ -253,12 +252,10 @@ where
     }
 }
 
-impl<UART, PINS> embedded_hal::serial::nb::Write<u8> for Serial<UART, PINS>
+impl<UART, PINS> embedded_hal_nb::serial::Write for Serial<UART, PINS>
 where
     UART: Deref<Target = pac::uart0::RegisterBlock>,
 {
-    type Error = Error;
-
     fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
         // If there's no room to write a byte or more to the FIFO, return WouldBlock
         if self.uart.uart_fifo_config_1.read().tx_fifo_cnt().bits() == 0 {
@@ -283,12 +280,10 @@ where
     }
 }
 
-impl<UART, PINS> embedded_hal::serial::nb::Read<u8> for Serial<UART, PINS>
+impl<UART, PINS> embedded_hal_nb::serial::Read<u8> for Serial<UART, PINS>
 where
     UART: Deref<Target = pac::uart0::RegisterBlock>,
 {
-    type Error = Error;
-
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
         if self.uart.uart_fifo_config_1.read().rx_fifo_cnt().bits() == 0 {
             Err(nb::Error::WouldBlock)
@@ -307,11 +302,11 @@ where
     type Error = Error;
 
     fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
-        WriteOne::write(self, word)
+        embedded_hal_nb::serial::Write::write(self, word)
     }
 
     fn flush(&mut self) -> nb::Result<(), Self::Error> {
-        WriteOne::flush(self)
+        embedded_hal_nb::serial::Write::flush(self)
     }
 }
 
@@ -322,13 +317,13 @@ where
     type Error = Error;
 
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
-        ReadOne::read(self)
+        embedded_hal_nb::serial::Read::read(self)
     }
 }
 
 impl<UART, PINS> fmt::Write for Serial<UART, PINS>
 where
-    Serial<UART, PINS>: embedded_hal::serial::nb::Write<u8>,
+    Serial<UART, PINS>: embedded_hal_nb::serial::Write<u8>,
 {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         s.as_bytes()

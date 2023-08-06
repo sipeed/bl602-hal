@@ -22,6 +22,17 @@ pub enum Error {
     Parity,
 }
 
+impl embedded_hal_nb::serial::Error for Error {
+    fn kind(&self) -> embedded_hal_nb::serial::ErrorKind {
+        match self {
+            Error::Framing => embedded_hal_nb::serial::ErrorKind::FrameFormat,
+            Error::Noise => embedded_hal_nb::serial::ErrorKind::Noise,
+            Error::Overrun => embedded_hal_nb::serial::ErrorKind::Overrun,
+            Error::Parity => embedded_hal_nb::serial::ErrorKind::Parity,
+        }
+    }
+}
+
 /// Serial configuration
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Config {

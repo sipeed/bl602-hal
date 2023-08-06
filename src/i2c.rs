@@ -325,6 +325,29 @@ where
 
         Ok(())
     }
+
+    // untested!
+    fn transaction(
+            &mut self,
+            address: i2cAlpha::SevenBitAddress,
+            operations: &mut [i2cAlpha::Operation<'_>],
+        ) -> Result<(), Self::Error> {
+        for op in operations {
+            let result = match op {
+                i2cAlpha::Operation::Read(buf) => {
+                    i2cAlpha::I2c::read(self, address,  buf)
+                },
+                i2cAlpha::Operation::Write(buf) => {
+                    i2cAlpha::I2c::write(self, address, buf)
+                },
+            };
+            if result.is_err(){
+                return result;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl<PINS> ReadZero for I2c<pac::I2C, PINS>

@@ -47,7 +47,9 @@ impl embedded_hal::i2c::Error for Error {
             Self::TxOverflow => embedded_hal::i2c::ErrorKind::Overrun,
             Self::RxUnderflow => embedded_hal::i2c::ErrorKind::Overrun,
             Self::TxUnderflow => embedded_hal::i2c::ErrorKind::Overrun,
-            Self::Timeout => embedded_hal::i2c::ErrorKind::NoAcknowledge(embedded_hal::i2c::NoAcknowledgeSource::Address),
+            Self::Timeout => embedded_hal::i2c::ErrorKind::NoAcknowledge(
+                embedded_hal::i2c::NoAcknowledgeSource::Address,
+            ),
         }
     }
 }
@@ -185,7 +187,7 @@ where
     }
 }
 
-impl<PINS> i2cAlpha::ErrorType for  I2c<pac::I2C, PINS> {
+impl<PINS> i2cAlpha::ErrorType for I2c<pac::I2C, PINS> {
     type Error = Error;
 }
 
@@ -326,20 +328,16 @@ where
 
     // untested!
     fn transaction(
-            &mut self,
-            address: i2cAlpha::SevenBitAddress,
-            operations: &mut [i2cAlpha::Operation<'_>],
-        ) -> Result<(), Self::Error> {
+        &mut self,
+        address: i2cAlpha::SevenBitAddress,
+        operations: &mut [i2cAlpha::Operation<'_>],
+    ) -> Result<(), Self::Error> {
         for op in operations {
             let result = match op {
-                i2cAlpha::Operation::Read(buf) => {
-                    i2cAlpha::I2c::read(self, address,  buf)
-                },
-                i2cAlpha::Operation::Write(buf) => {
-                    i2cAlpha::I2c::write(self, address, buf)
-                },
+                i2cAlpha::Operation::Read(buf) => i2cAlpha::I2c::read(self, address, buf),
+                i2cAlpha::Operation::Write(buf) => i2cAlpha::I2c::write(self, address, buf),
             };
-            if result.is_err(){
+            if result.is_err() {
                 return result;
             }
         }

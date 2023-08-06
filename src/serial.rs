@@ -264,7 +264,7 @@ where
     }
 }
 
-impl<UART, PINS>  embedded_hal_nb::serial::ErrorType for Serial<UART, PINS>{
+impl<UART, PINS> embedded_hal_nb::serial::ErrorType for Serial<UART, PINS> {
     type Error = Error;
 }
 
@@ -303,8 +303,7 @@ where
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
         if self.uart.uart_fifo_config_1.read().rx_fifo_cnt().bits() == 0 {
             Err(nb::Error::WouldBlock)
-        }
-        else {
+        } else {
             let ans = self.uart.uart_fifo_rdata.read().bits();
             Ok((ans & 0xff) as u8)
         }

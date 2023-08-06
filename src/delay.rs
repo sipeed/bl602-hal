@@ -1,7 +1,7 @@
 //! Delays
 
-use embedded_hal_zero::blocking::delay::{DelayMs as DelayMsZero, DelayUs as DelayUsZero};
 use embedded_hal::delay::DelayUs;
+use embedded_hal_zero::blocking::delay::{DelayMs as DelayMsZero, DelayUs as DelayUsZero};
 
 /// Use RISCV machine-mode cycle counter (`mcycle`) as a delay provider.
 ///

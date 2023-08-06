@@ -22,8 +22,8 @@
 */
 
 use bl602_pac::SPI;
-use embedded_hal_nb;
 pub use embedded_hal::spi::Mode;
+use embedded_hal_nb;
 use embedded_hal_zero::spi::FullDuplex as FullDuplexZero;
 use embedded_time::rate::Hertz;
 
@@ -223,11 +223,9 @@ where
     }
 }
 
-
-impl<PINS> embedded_hal_nb::spi::ErrorType for Spi<pac::SPI, PINS>{
+impl<PINS> embedded_hal_nb::spi::ErrorType for Spi<pac::SPI, PINS> {
     type Error = Error;
 }
-
 
 impl<PINS> embedded_hal_nb::spi::FullDuplex<u8> for Spi<pac::SPI, PINS>
 where
@@ -292,7 +290,6 @@ impl<PINS> embedded_hal_zero::blocking::spi::write::Default<u8> for Spi<pac::SPI
     PINS: Pins<pac::SPI>
 {
 }
-
 
 impl<PINS> embedded_hal_zero::blocking::spi::write_iter::Default<u8> for Spi<pac::SPI, PINS> where
     PINS: Pins<pac::SPI>

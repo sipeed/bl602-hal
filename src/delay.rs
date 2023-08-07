@@ -66,6 +66,63 @@ impl DelayUsZero<u64> for McycleDelay {
     }
 }
 
+// Call DelayMsZero::<u64>::delay_ms for all of u8/u16/u32/i8/i16/i32/i64
+impl DelayMsZero<u8> for McycleDelay {
+    /// Performs a busy-wait loop until the number of milliseconds `ms` has elapsed
+    #[inline]
+    fn delay_ms(&mut self, ms: u8) {
+        DelayMsZero::<u64>::delay_ms(self, ms as u64);
+    }
+}
+
+impl DelayMsZero<u16> for McycleDelay {
+    /// Performs a busy-wait loop until the number of milliseconds `ms` has elapsed
+    #[inline]
+    fn delay_ms(&mut self, ms: u16) {
+        DelayMsZero::<u64>::delay_ms(self, ms as u64);
+    }
+}
+
+impl DelayMsZero<u32> for McycleDelay {
+    /// Performs a busy-wait loop until the number of milliseconds `ms` has elapsed
+    #[inline]
+    fn delay_ms(&mut self, ms: u32) {
+        DelayMsZero::<u64>::delay_ms(self, ms as u64);
+    }
+}
+
+impl DelayMsZero<i8> for McycleDelay {
+    /// Performs a busy-wait loop until the number of milliseconds `ms` has elapsed
+    #[inline]
+    fn delay_ms(&mut self, ms: i8) {
+        DelayMsZero::<u64>::delay_ms(self, ms as u64);
+    }
+}
+
+impl DelayMsZero<i16> for McycleDelay {
+    /// Performs a busy-wait loop until the number of milliseconds `ms` has elapsed
+    #[inline]
+    fn delay_ms(&mut self, ms: i16) {
+        DelayMsZero::<u64>::delay_ms(self, ms as u64);
+    }
+}
+
+impl DelayMsZero<i32> for McycleDelay {
+    /// Performs a busy-wait loop until the number of milliseconds `ms` has elapsed
+    #[inline]
+    fn delay_ms(&mut self, ms: i32) {
+        DelayMsZero::<u64>::delay_ms(self, ms as u64);
+    }
+}
+
+impl DelayMsZero<i64> for McycleDelay {
+    /// Performs a busy-wait loop until the number of milliseconds `ms` has elapsed
+    #[inline]
+    fn delay_ms(&mut self, ms: i64) {
+        DelayMsZero::<u64>::delay_ms(self, ms as u64);
+    }
+}
+
 impl DelayMsZero<u64> for McycleDelay {
     /// Performs a busy-wait loop until the number of milliseconds `ms` has elapsed
     #[inline]

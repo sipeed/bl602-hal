@@ -326,23 +326,14 @@ where
         Ok(())
     }
 
-    // untested!
+    /// We can't meet the conttract for transaction, leaving it as unimplemented for now.
+    /// https://github.com/rust-embedded/embedded-hal/blob/bf2b8a11fde064194ae5c70642b579051de631c8/embedded-hal/src/i2c.rs#L361
     fn transaction(
         &mut self,
-        address: i2cAlpha::SevenBitAddress,
-        operations: &mut [i2cAlpha::Operation<'_>],
+        _address: i2cAlpha::SevenBitAddress,
+        _operations: &mut [i2cAlpha::Operation<'_>],
     ) -> Result<(), Self::Error> {
-        for op in operations {
-            let result = match op {
-                i2cAlpha::Operation::Read(buf) => i2cAlpha::I2c::read(self, address, buf),
-                i2cAlpha::Operation::Write(buf) => i2cAlpha::I2c::write(self, address, buf),
-            };
-            if result.is_err() {
-                return result;
-            }
-        }
-
-        Ok(())
+        unimplemented!()
     }
 }
 

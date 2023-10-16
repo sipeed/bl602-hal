@@ -22,9 +22,8 @@
 */
 
 use bl602_pac::SPI;
-pub use embedded_hal::spi::blocking::Transfer;
-use embedded_hal::spi::nb::FullDuplex;
 pub use embedded_hal::spi::Mode;
+use embedded_hal_nb;
 use embedded_hal_zero::spi::FullDuplex as FullDuplexZero;
 use embedded_time::rate::Hertz;
 
@@ -44,6 +43,17 @@ pub enum Error {
     TxOverflow,
     /// Tx underflow occurred
     TxUnderflow,
+}
+
+impl embedded_hal_nb::spi::Error for Error {
+    fn kind(&self) -> embedded_hal_nb::spi::ErrorKind {
+        match self {
+            Self::RxOverflow => embedded_hal_nb::spi::ErrorKind::Overrun,
+            Self::TxOverflow => embedded_hal_nb::spi::ErrorKind::Overrun,
+            Self::RxUnderflow => embedded_hal_nb::spi::ErrorKind::Overrun,
+            Self::TxUnderflow => embedded_hal_nb::spi::ErrorKind::Overrun,
+        }
+    }
 }
 
 /// The bit format to send the data in
@@ -213,12 +223,14 @@ where
     }
 }
 
-impl<PINS> FullDuplex<u8> for Spi<pac::SPI, PINS>
+impl<PINS> embedded_hal_nb::spi::ErrorType for Spi<pac::SPI, PINS> {
+    type Error = Error;
+}
+
+impl<PINS> embedded_hal_nb::spi::FullDuplex<u8> for Spi<pac::SPI, PINS>
 where
     PINS: Pins<pac::SPI>,
 {
-    type Error = Error;
-
     fn read(&mut self) -> nb::Result<u8, Error> {
         let spi_fifo_config_0 = self.spi.spi_fifo_config_0.read();
 
@@ -259,11 +271,11 @@ where
     type Error = Error;
 
     fn read(&mut self) -> nb::Result<u8, Error> {
-        FullDuplex::read(self)
+        embedded_hal_nb::spi::FullDuplex::read(self)
     }
 
     fn send(&mut self, data: u8) -> nb::Result<(), Self::Error> {
-        FullDuplex::write(self, data)
+        embedded_hal_nb::spi::FullDuplex::write(self, data)
     }
 }
 
@@ -274,72 +286,12 @@ impl<PINS> embedded_hal_zero::blocking::spi::transfer::Default<u8> for Spi<pac::
 {
 }
 
-// This is basically the default impl of spi::blocking::Transfer from e-h 0.2
-impl<PINS> embedded_hal::spi::blocking::Transfer<u8> for Spi<pac::SPI, PINS>
-where
-    PINS: Pins<pac::SPI>,
-{
-    type Error = Error;
-
-    fn transfer(&mut self, words: &mut [u8]) -> Result<(), Self::Error> {
-        for word in words.iter_mut() {
-            nb::block!(self.send(*word))?;
-            *word = nb::block!(FullDuplexZero::read(self))?;
-        }
-
-        Ok(())
-    }
-}
-
 impl<PINS> embedded_hal_zero::blocking::spi::write::Default<u8> for Spi<pac::SPI, PINS> where
     PINS: Pins<pac::SPI>
 {
-}
-
-// This is basically the default impl of spi::blocking::write from e-h 0.2
-impl<PINS> embedded_hal::spi::blocking::Write<u8> for Spi<pac::SPI, PINS>
-where
-    PINS: Pins<pac::SPI>,
-{
-    type Error = Error;
-    fn write(&mut self, words: &[u8]) -> Result<(), Self::Error> {
-        for word in words {
-            nb::block!(self.send(*word))?;
-            nb::block!(FullDuplexZero::read(self))?;
-        }
-
-        Ok(())
-    }
 }
 
 impl<PINS> embedded_hal_zero::blocking::spi::write_iter::Default<u8> for Spi<pac::SPI, PINS> where
     PINS: Pins<pac::SPI>
 {
 }
-
-// This is basically the default impl of spi::blocking::write_iter from e-h 0.2
-impl<PINS> embedded_hal::spi::blocking::WriteIter<u8> for Spi<pac::SPI, PINS>
-where
-    PINS: Pins<pac::SPI>,
-{
-    type Error = Error;
-    fn write_iter<WI>(&mut self, words: WI) -> Result<(), Self::Error>
-    where
-        WI: IntoIterator<Item = u8>,
-    {
-        for word in words.into_iter() {
-            nb::block!(self.send(word))?;
-            nb::block!(FullDuplexZero::read(self))?;
-        }
-
-        Ok(())
-    }
-}
-
-// This one didnt exist in 0.2
-// Haven't worked out how to satisy it yet.
-
-// impl<PINS> embedded_hal::spi::blocking::Transactional<u8> for Spi<pac::SPI, PINS> where
-//     PINS: Pins<pac::SPI>
-// {
-// }

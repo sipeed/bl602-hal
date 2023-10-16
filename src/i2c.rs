@@ -19,8 +19,6 @@
 
 use bl602_pac::I2C;
 use embedded_hal::i2c as i2cAlpha;
-use embedded_hal::i2c::blocking::Read as ReadAlpha;
-use embedded_hal::i2c::blocking::Write as WriteAlpha;
 use embedded_hal_zero::blocking::i2c::Read as ReadZero;
 use embedded_hal_zero::blocking::i2c::Write as WriteZero;
 use embedded_time::rate::Hertz;
@@ -40,6 +38,20 @@ pub enum Error {
     TxUnderflow,
     /// Timeout waiting for fifo occurred
     Timeout,
+}
+
+impl embedded_hal::i2c::Error for Error {
+    fn kind(&self) -> embedded_hal::i2c::ErrorKind {
+        match self {
+            Self::RxOverflow => embedded_hal::i2c::ErrorKind::Overrun,
+            Self::TxOverflow => embedded_hal::i2c::ErrorKind::Overrun,
+            Self::RxUnderflow => embedded_hal::i2c::ErrorKind::Overrun,
+            Self::TxUnderflow => embedded_hal::i2c::ErrorKind::Overrun,
+            Self::Timeout => embedded_hal::i2c::ErrorKind::NoAcknowledge(
+                embedded_hal::i2c::NoAcknowledgeSource::Address,
+            ),
+        }
+    }
 }
 
 /// SDA pins - DO NOT IMPLEMENT THIS TRAIT
@@ -175,12 +187,14 @@ where
     }
 }
 
-impl<PINS> ReadAlpha<i2cAlpha::SevenBitAddress> for I2c<pac::I2C, PINS>
+impl<PINS> i2cAlpha::ErrorType for I2c<pac::I2C, PINS> {
+    type Error = Error;
+}
+
+impl<PINS> i2cAlpha::I2c<i2cAlpha::SevenBitAddress> for I2c<pac::I2C, PINS>
 where
     PINS: Pins<pac::I2C>,
 {
-    type Error = Error;
-
     fn read(
         &mut self,
         address: i2cAlpha::SevenBitAddress,
@@ -243,13 +257,6 @@ where
 
         Ok(())
     }
-}
-
-impl<PINS> WriteAlpha<i2cAlpha::SevenBitAddress> for I2c<pac::I2C, PINS>
-where
-    PINS: Pins<pac::I2C>,
-{
-    type Error = Error;
 
     fn write(
         &mut self,
@@ -318,6 +325,16 @@ where
 
         Ok(())
     }
+
+    /// We can't meet the conttract for transaction, leaving it as unimplemented for now.
+    /// https://github.com/rust-embedded/embedded-hal/blob/bf2b8a11fde064194ae5c70642b579051de631c8/embedded-hal/src/i2c.rs#L361
+    fn transaction(
+        &mut self,
+        _address: i2cAlpha::SevenBitAddress,
+        _operations: &mut [i2cAlpha::Operation<'_>],
+    ) -> Result<(), Self::Error> {
+        unimplemented!()
+    }
 }
 
 impl<PINS> ReadZero for I2c<pac::I2C, PINS>
@@ -327,7 +344,7 @@ where
     type Error = Error;
 
     fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error> {
-        ReadAlpha::read(self, address, buffer)
+        i2cAlpha::I2c::read(self, address, buffer)
     }
 }
 
@@ -338,6 +355,6 @@ where
     type Error = Error;
 
     fn write(&mut self, addr: u8, bytes: &[u8]) -> Result<(), Self::Error> {
-        WriteAlpha::write(self, addr, bytes)
+        i2cAlpha::I2c::write(self, addr, bytes)
     }
 }

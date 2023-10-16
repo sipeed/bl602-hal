@@ -40,6 +40,7 @@ use bl602_pac::TIMER;
 use core::cell::RefCell;
 use embedded_time::{duration::*, rate::*};
 use paste::paste;
+use void::Void;
 
 /// Error for [CountDown](embedded_hal::timer::CountDown)
 #[derive(Debug)]
@@ -294,12 +295,10 @@ macro_rules! impl_timer_channel {
             }
         }
 
-        impl embedded_hal::timer::nb::CountDown for $conf_name {
-            type Error = CountDownError;
-
+        impl embedded_hal_zero::timer::CountDown for $conf_name {
             type Time = Nanoseconds::<u64>;
 
-            fn start<T>(&mut self, count: T) -> Result<(), Self::Error>
+            fn start<T>(&mut self, count: T)
             where
                 T: Into<Self::Time>,
             {
@@ -307,10 +306,9 @@ macro_rules! impl_timer_channel {
                     Nanoseconds::<u64>::new(self.current_time().0 + count.into().0)
                 );
                 self.last_count_down_value = None;
-                Ok(())
             }
 
-            fn wait(&mut self) -> nb::Result<(), Self::Error> {
+            fn wait(&mut self) -> Result<(), nb::Error<Void>> {
                 match self.count_down_target {
                     Some(nanos) => {
                         let current_time = self.current_time();
@@ -319,13 +317,9 @@ macro_rules! impl_timer_channel {
                             Ok(())
                         } else {
                             match self.last_count_down_value {
-                                Some(last_count_down_value) => {
-                                    if current_time < last_count_down_value {
-                                        Err(nb::Error::Other(CountDownError::Wrapped))
-                                    } else {
-                                        self.last_count_down_value = Some(current_time);
-                                        Err(nb::Error::WouldBlock)
-                                    }
+                                Some(_) => {
+                                    self.last_count_down_value = Some(current_time);
+                                    Err(nb::Error::WouldBlock)
                                 }
                                 None => {
                                     self.last_count_down_value = Some(current_time);

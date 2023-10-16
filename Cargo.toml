@@ -11,11 +11,13 @@ description = "HAL for the bl602 microcontroller"
 
 [dependencies]
 bl602-pac = { git = "https://github.com/sipeed/bl602-pac", branch = "main" }
-embedded-hal = "=1.0.0-alpha.5"
+embedded-hal = "=1.0.0-rc.1"
+embedded-hal-nb = "=1.0.0-rc.1"
 embedded-time = "0.12.0"
 riscv = "0.10.1"
 nb = "1.0"
 paste = "1.0"
+void = { default-features = false, version = "1.0.2" }
 
 [dependencies.embedded-hal-zero]
 version = "0.2.5"

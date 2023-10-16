@@ -25,9 +25,9 @@ use core::cell::RefCell;
 use core::fmt::Write;
 use core::ops::DerefMut;
 use critical_section::{self, Mutex};
-use embedded_hal::delay::blocking::DelayMs;
-use embedded_hal::digital::blocking::{OutputPin, ToggleableOutputPin};
-use embedded_hal::watchdog::blocking::{Enable, Watchdog};
+use embedded_hal::delay::DelayUs;
+use embedded_hal::digital::{OutputPin, ToggleableOutputPin};
+use embedded_hal_zero::watchdog::{Watchdog, WatchdogEnable};
 use embedded_time::{duration::*, rate::*};
 use hal::{
     clock::{Strict, SysclkFreq, UART_PLL_FREQ},
@@ -86,7 +86,7 @@ fn main() -> ! {
 
     // Set up the watchdog timer to the slowest tick rate possible:
     let timers = dp.TIMER.split();
-    let watchdog = timers
+    let mut watchdog = timers
         .watchdog
         .set_clock_source(WdtClockSource::Rc32Khz, 125.Hz());
 
@@ -112,7 +112,7 @@ fn main() -> ! {
 
     // The watchdog timer doesn't begin counting ticks until it is started. We don't need to handle
     // the error state, since the watchdog start function will never actually return an Err().
-    let watchdog = watchdog.start(10_u32.seconds()).unwrap();
+    watchdog.start(10_u32.seconds());
 
     // Move the references to their UnsafeCells once initialized, and before interrupts are enabled:
     critical_section::with(|cs| G_INTERRUPT_LED_PIN_R.borrow(cs).replace(Some(r_led_pin)));
@@ -126,10 +126,10 @@ fn main() -> ! {
         // In order to use the watchdog once it has been moved into the RefCell, you must call free():
         critical_section::with(|cs| {
             if let Some(watchdog) = G_LED_TIMER.borrow(cs).borrow_mut().deref_mut() {
-                watchdog.feed().ok();
+                watchdog.feed();
             }
         });
-        d.delay_ms(20_000).ok();
+        d.delay_ms(20_000);
     }
 }
 
@@ -145,14 +145,14 @@ fn Watchdog(_: &mut TrapFrame) {
     critical_section::with(|cs| {
         if let Some(watchdog) = G_LED_TIMER.borrow(cs).borrow_mut().deref_mut() {
             watchdog.clear_interrupt();
-            watchdog.feed().ok();
+            watchdog.feed();
         }
     });
 
     // Toggle the red led whenever the interrupt is triggered:
     critical_section::with(|cs| {
         if let Some(led_pin) = G_INTERRUPT_LED_PIN_R.borrow(cs).borrow_mut().deref_mut() {
-            led_pin.toggle().ok();
+            led_pin.toggle();
         }
     });
 

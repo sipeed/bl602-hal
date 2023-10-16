@@ -17,8 +17,8 @@ use bl602_hal as hal;
 use core::cell::RefCell;
 use core::ops::DerefMut;
 use critical_section::{self, Mutex};
-use embedded_hal::digital::blocking::{OutputPin, ToggleableOutputPin};
-use embedded_hal::timer::nb::CountDown;
+use embedded_hal::digital::{OutputPin, ToggleableOutputPin};
+use embedded_hal_zero::timer::CountDown;
 use embedded_time::{duration::*, rate::*};
 use hal::{
     clock::{Strict, SysclkFreq},
@@ -107,7 +107,7 @@ fn main() -> ! {
     // a timer without needing to configure any match values or handle any interrupts:
     loop {
         // Start the timer's CountDown functionality. The countdown will last 3000ms.
-        timer_ch1.start(3_000u32.milliseconds()).ok();
+        timer_ch1.start(3_000u32.milliseconds());
         // The .wait() function returns an error until the timer has finished counting down.
         while timer_ch1.wait().is_err() {
             // Stay in the while loop until the timer is done.

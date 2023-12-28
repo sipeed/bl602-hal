@@ -1,6 +1,6 @@
 //! Delays
 
-use embedded_hal::delay::DelayUs;
+use embedded_hal::delay::DelayNs;
 use embedded_hal_zero::blocking::delay::{DelayMs as DelayMsZero, DelayUs as DelayUsZero};
 
 /// Use RISCV machine-mode cycle counter (`mcycle`) as a delay provider.
@@ -44,7 +44,11 @@ impl McycleDelay {
 }
 
 // embedded-hal 1.0 traits
-impl DelayUs for McycleDelay {
+impl DelayNs for McycleDelay {
+    /// Performs a busy-wait loop until the number of nanoseconds `ns` has elapsed
+    fn delay_ns(&mut self, ns: u32) {
+        McycleDelay::delay_cycles((ns as u64 * (self.core_frequency as u64)) / 1_000_000_000);
+    }
     /// Performs a busy-wait loop until the number of microseconds `us` has elapsed
     #[inline]
     fn delay_us(&mut self, us: u32) {

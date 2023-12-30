@@ -33,6 +33,12 @@ critical-section = "1.1"
 
 [build-dependencies]
 riscv-target = "0.1.2"
+# riscv-target depends on regex, which depends on memchr.
+# memchr bumped it's MSRV to 1.61 midway through 2.6.x releases
+# regex increased it's MSRV to 1.65 in release 1.10.x
+# pinning regex to 1.8.4 and memchr to 2.5.0 until we bump MSRV
+regex = "=1.8.4"
+memchr = "=2.5.0"
 
 [features]
 default = ["critical-section-impl"]

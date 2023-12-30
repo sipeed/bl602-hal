@@ -9,15 +9,15 @@ use embedded_hal_zero::blocking::delay::{DelayMs as DelayMsZero, DelayUs as Dela
 /// bit-banging protocols, etc
 #[derive(Copy, Clone)]
 pub struct McycleDelay {
+    /// System clock frequency, used to convert clock cycles
+    /// into real-world time values
     core_frequency: u32,
 }
 
 impl McycleDelay {
     /// Constructs the delay provider based on core clock frequency `freq`
     pub fn new(freq: u32) -> Self {
-        Self {
-            /// System clock frequency, used to convert clock cycles
-            /// into real-world time values
+        Self {        
             core_frequency: freq,
         }
     }

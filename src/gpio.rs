@@ -459,11 +459,11 @@ macro_rules! impl_glb {
             }
 
             impl<MODE> InputPin for $Pini<Input<MODE>> {
-                fn is_high(&self) -> Result<bool, Self::Error> {
+                fn is_high(&mut self) -> Result<bool, Self::Error> {
                     Ok(self.is_high_inner())
                 }
 
-                fn is_low(&self) -> Result<bool, Self::Error> {
+                fn is_low(&mut self) -> Result<bool, Self::Error> {
                     Ok(self.is_low_inner())
                 }
             }
@@ -570,11 +570,11 @@ macro_rules! impl_glb {
             }
 
             impl<MODE> StatefulOutputPin for $Pini<Output<MODE>> {
-                fn is_set_high(&self) -> Result<bool, Self::Error> {
+                fn is_set_high(&mut self) -> Result<bool, Self::Error> {
                     Ok(self.is_output_high_inner())
                 }
 
-                fn is_set_low(&self) -> Result<bool, Self::Error> {
+                fn is_set_low(&mut self) -> Result<bool, Self::Error> {
                     Ok(self.is_output_low_inner())
                 }
             }

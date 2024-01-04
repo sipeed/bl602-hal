@@ -27,7 +27,7 @@ use crate::delay::*;
 use crate::gpio::ClkCfg;
 use crate::pac;
 use core::num::NonZeroU32;
-use embedded_hal::delay::DelayUs;
+use embedded_hal::delay::DelayNs;
 use embedded_time::rate::{Extensions, Hertz};
 
 /// Internal high-speed RC oscillator frequency

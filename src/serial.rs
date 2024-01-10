@@ -1,4 +1,5 @@
 //! Serial communication
+use self::private::Sealed;
 use crate::clock::Clocks;
 use crate::pac;
 use core::fmt;
@@ -348,28 +349,28 @@ where
     }
 }
 
-/// Serial transmit pins - DO NOT IMPLEMENT THIS TRAIT
-pub unsafe trait TxPin<UART> {}
-/// Serial receive pins - DO NOT IMPLEMENT THIS TRAIT
-pub unsafe trait RxPin<UART> {}
-/// Serial rts pins - DO NOT IMPLEMENT THIS TRAIT
-pub unsafe trait RtsPin<UART> {}
-/// Serial cts pins - DO NOT IMPLEMENT THIS TRAIT
-pub unsafe trait CtsPin<UART> {}
+/// Serial transmit pins
+pub trait TxPin<UART>: Sealed {}
+/// Serial receive pins
+pub trait RxPin<UART>: Sealed {}
+/// Serial rts pins
+pub trait RtsPin<UART>: Sealed {}
+/// Serial cts pins
+pub trait CtsPin<UART>: Sealed {}
 
 macro_rules! impl_uart_pin {
     ($(($UartSigi: ident, $UartMuxi: ident),)+) => {
         use crate::gpio::*;
         $(
-        unsafe impl<PIN: UartPin<$UartSigi>> TxPin<pac::UART0> for (PIN, $UartMuxi<Uart0Tx>) {}
-        unsafe impl<PIN: UartPin<$UartSigi>> RxPin<pac::UART0> for (PIN, $UartMuxi<Uart0Rx>) {}
-        unsafe impl<PIN: UartPin<$UartSigi>> RtsPin<pac::UART0> for (PIN, $UartMuxi<Uart0Rts>) {}
-        unsafe impl<PIN: UartPin<$UartSigi>> CtsPin<pac::UART0> for (PIN, $UartMuxi<Uart0Cts>) {}
+        impl<PIN: UartPin<$UartSigi>> TxPin<pac::UART0> for (PIN, $UartMuxi<Uart0Tx>) {}
+        impl<PIN: UartPin<$UartSigi>> RxPin<pac::UART0> for (PIN, $UartMuxi<Uart0Rx>) {}
+        impl<PIN: UartPin<$UartSigi>> RtsPin<pac::UART0> for (PIN, $UartMuxi<Uart0Rts>) {}
+        impl<PIN: UartPin<$UartSigi>> CtsPin<pac::UART0> for (PIN, $UartMuxi<Uart0Cts>) {}
 
-        unsafe impl<PIN: UartPin<$UartSigi>> TxPin<pac::UART1> for (PIN, $UartMuxi<Uart1Tx>) {}
-        unsafe impl<PIN: UartPin<$UartSigi>> RxPin<pac::UART1> for (PIN, $UartMuxi<Uart1Rx>) {}
-        unsafe impl<PIN: UartPin<$UartSigi>> RtsPin<pac::UART1> for (PIN, $UartMuxi<Uart1Rts>) {}
-        unsafe impl<PIN: UartPin<$UartSigi>> CtsPin<pac::UART1> for (PIN, $UartMuxi<Uart1Cts>) {}
+        impl<PIN: UartPin<$UartSigi>> TxPin<pac::UART1> for (PIN, $UartMuxi<Uart1Tx>) {}
+        impl<PIN: UartPin<$UartSigi>> RxPin<pac::UART1> for (PIN, $UartMuxi<Uart1Rx>) {}
+        impl<PIN: UartPin<$UartSigi>> RtsPin<pac::UART1> for (PIN, $UartMuxi<Uart1Rts>) {}
+        impl<PIN: UartPin<$UartSigi>> CtsPin<pac::UART1> for (PIN, $UartMuxi<Uart1Cts>) {}
         )+
     };
 }
@@ -386,14 +387,14 @@ impl_uart_pin!(
 );
 
 /// Serial pins - DO NOT IMPLEMENT THIS TRAIT
-pub unsafe trait Pins<UART> {
+pub trait Pins<UART>: Sealed {
     const HAS_TX: bool;
     const HAS_RX: bool;
     const HAS_RTS: bool;
     const HAS_CTS: bool;
 }
 
-unsafe impl<UART, TX, RX> Pins<UART> for (TX, RX)
+impl<UART, TX, RX> Pins<UART> for (TX, RX)
 where
     TX: TxPin<UART>,
     RX: RxPin<UART>,
@@ -404,7 +405,7 @@ where
     const HAS_CTS: bool = false;
 }
 
-unsafe impl<UART, TX, RX, RTS, CTS> Pins<UART> for (TX, RX, RTS, CTS)
+impl<UART, TX, RX, RTS, CTS> Pins<UART> for (TX, RX, RTS, CTS)
 where
     TX: TxPin<UART>,
     RX: RxPin<UART>,
@@ -415,4 +416,37 @@ where
     const HAS_RX: bool = true;
     const HAS_RTS: bool = true;
     const HAS_CTS: bool = true;
+}
+
+// Prevent users from implementing the Serial pin traits
+mod private {
+    use crate::gpio;
+
+    pub trait Sealed {}
+    impl<TX, RX> Sealed for (TX, RX) {}
+    impl<TX, RX, RTS, CTS> Sealed for (TX, RX, RTS, CTS) {}
+
+    impl<MODE> Sealed for gpio::Pin0<MODE> {}
+    impl<MODE> Sealed for gpio::Pin1<MODE> {}
+    impl<MODE> Sealed for gpio::Pin2<MODE> {}
+    impl<MODE> Sealed for gpio::Pin3<MODE> {}
+    impl<MODE> Sealed for gpio::Pin4<MODE> {}
+    impl<MODE> Sealed for gpio::Pin5<MODE> {}
+    impl<MODE> Sealed for gpio::Pin6<MODE> {}
+    impl<MODE> Sealed for gpio::Pin7<MODE> {}
+    impl<MODE> Sealed for gpio::Pin8<MODE> {}
+    impl<MODE> Sealed for gpio::Pin9<MODE> {}
+    impl<MODE> Sealed for gpio::Pin10<MODE> {}
+    impl<MODE> Sealed for gpio::Pin11<MODE> {}
+    impl<MODE> Sealed for gpio::Pin12<MODE> {}
+    impl<MODE> Sealed for gpio::Pin13<MODE> {}
+    impl<MODE> Sealed for gpio::Pin14<MODE> {}
+    impl<MODE> Sealed for gpio::Pin15<MODE> {}
+    impl<MODE> Sealed for gpio::Pin16<MODE> {}
+    impl<MODE> Sealed for gpio::Pin17<MODE> {}
+    impl<MODE> Sealed for gpio::Pin18<MODE> {}
+    impl<MODE> Sealed for gpio::Pin19<MODE> {}
+    impl<MODE> Sealed for gpio::Pin20<MODE> {}
+    impl<MODE> Sealed for gpio::Pin21<MODE> {}
+    impl<MODE> Sealed for gpio::Pin22<MODE> {}
 }

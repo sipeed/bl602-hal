@@ -280,7 +280,7 @@ macro_rules! impl_glb {
         pub mod pin {
             use core::marker::PhantomData;
             use core::convert::Infallible;
-            use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
+            use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
             use embedded_hal_zero::digital::v2::{
                 InputPin as InputPinZero,
                 OutputPin as OutputPinZero,
@@ -589,17 +589,6 @@ macro_rules! impl_glb {
                 }
             }
 
-
-            impl<MODE> ToggleableOutputPin for $Pini<Output<MODE>> {
-                fn toggle(&mut self) -> Result<(), Self::Error> {
-                    if self.is_output_high_inner() {
-                        self.set_low_inner()
-                    } else {
-                        self.set_high_inner()
-                    }
-                    Ok(())
-                }
-            }
 
             impl<MODE> ToggleableOutputPinZero for $Pini<Output<MODE>> {
                 type Error = Infallible;

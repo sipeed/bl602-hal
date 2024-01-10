@@ -17,7 +17,7 @@ pub struct McycleDelay {
 impl McycleDelay {
     /// Constructs the delay provider based on core clock frequency `freq`
     pub fn new(freq: u32) -> Self {
-        Self {        
+        Self {
             core_frequency: freq,
         }
     }

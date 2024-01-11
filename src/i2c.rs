@@ -23,6 +23,7 @@ use embedded_hal_zero::blocking::i2c::Read as ReadZero;
 use embedded_hal_zero::blocking::i2c::Write as WriteZero;
 use embedded_time::rate::Hertz;
 
+use crate::delay::McycleDelay;
 use crate::{clock::Clocks, pac};
 
 use self::private::Sealed;
@@ -98,8 +99,11 @@ where
 
 /// I2C peripheral operating in master mode supporting seven bit addressing
 pub struct I2c<I2C, PINS> {
+    /// i2c peripheral instance
     i2c: I2C,
+    /// sda and scl pins for this i2c interface
     pins: PINS,
+    /// timeout (in microseconds)
     timeout: u16,
 }
 
@@ -174,9 +178,8 @@ where
         (self.i2c, self.pins)
     }
 
-    /// Set the timeout when waiting for fifo (rx and tx).
-    /// It's not a time unit but the number of cycles to wait.
-    /// This defaults to 2048
+    /// Set the timeout (in microseconds) when waiting for fifo (rx and tx).
+    /// This defaults to 2000us (2 milliseconds)
     pub fn set_timeout(&mut self, timeout: u16) {
         self.timeout = timeout;
     }
@@ -237,13 +240,15 @@ where
                 .set_bit()
         });
 
+        // We don't know what the CPU frequency is. Assume maximum of 192Mhz
+        // This might make our timeouts longer than expected if frequency is lower.
+        let mut delay = McycleDelay::new(192_000_000);
         for value in tmp.iter_mut() {
-            let mut timeout_countdown = self.timeout;
+            let start_time = McycleDelay::get_cycle_count();
             while self.i2c.i2c_fifo_config_1.read().rx_fifo_cnt().bits() == 0 {
-                if timeout_countdown == 0 {
+                if delay.us_since(start_time) > self.timeout.into() {
                     return Err(Error::Timeout);
                 }
-                timeout_countdown -= 1;
             }
             *value = self.i2c.i2c_fifo_rdata.read().i2c_fifo_rdata().bits();
         }
@@ -304,21 +309,35 @@ where
                 .set_bit()
         });
 
+        // We don't know what the CPU frequency is. Assume maximum of 192Mhz
+        // This might make our timeouts longer than expected if frequency is lower.
+        let mut delay = McycleDelay::new(192_000_000);
         for value in tmp.iter() {
-            let mut timeout_countdown = self.timeout;
+            let start_time = McycleDelay::get_cycle_count();
             while self.i2c.i2c_fifo_config_1.read().tx_fifo_cnt().bits() == 0 {
-                if timeout_countdown == 0 {
+                if delay.us_since(start_time) > self.timeout.into() {
                     return Err(Error::Timeout);
                 }
-                timeout_countdown -= 1;
             }
             self.i2c
                 .i2c_fifo_wdata
                 .write(|w| unsafe { w.i2c_fifo_wdata().bits(*value) });
         }
 
+        let start_time = McycleDelay::get_cycle_count();
+        while self.i2c.i2c_fifo_config_1.read().tx_fifo_cnt().bits() < 2 {
+            // wait for write fifo to be empty
+            if delay.us_since(start_time) > self.timeout.into() {
+                return Err(Error::Timeout);
+            }
+        }
+
+        let start_time = McycleDelay::get_cycle_count();
         while self.i2c.i2c_bus_busy.read().sts_i2c_bus_busy().bit_is_set() {
             // wait for transfer to finish
+            if delay.us_since(start_time) > self.timeout.into() {
+                return Err(Error::Timeout);
+            }
         }
 
         self.i2c

@@ -25,8 +25,8 @@ use core::cell::RefCell;
 use core::fmt::Write;
 use core::ops::DerefMut;
 use critical_section::{self, Mutex};
-use embedded_hal::delay::DelayUs;
-use embedded_hal::digital::{OutputPin, ToggleableOutputPin};
+use embedded_hal::delay::DelayNs;
+use embedded_hal::digital::{OutputPin, StatefulOutputPin};
 use embedded_hal_zero::watchdog::{Watchdog, WatchdogEnable};
 use embedded_time::{duration::*, rate::*};
 use hal::{
@@ -152,7 +152,7 @@ fn Watchdog(_: &mut TrapFrame) {
     // Toggle the red led whenever the interrupt is triggered:
     critical_section::with(|cs| {
         if let Some(led_pin) = G_INTERRUPT_LED_PIN_R.borrow(cs).borrow_mut().deref_mut() {
-            led_pin.toggle();
+            led_pin.toggle().unwrap();
         }
     });
 

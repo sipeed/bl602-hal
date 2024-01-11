@@ -17,7 +17,7 @@ use bl602_hal as hal;
 use core::cell::RefCell;
 use core::ops::DerefMut;
 use critical_section::{self, Mutex};
-use embedded_hal::digital::{OutputPin, ToggleableOutputPin};
+use embedded_hal::digital::{OutputPin, StatefulOutputPin};
 use embedded_hal_zero::timer::CountDown;
 use embedded_time::{duration::*, rate::*};
 use hal::{

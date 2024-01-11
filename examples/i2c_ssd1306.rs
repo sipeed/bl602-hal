@@ -9,6 +9,8 @@ use embedded_graphics::{
     text::{Baseline, Text},
     Drawable,
 };
+use embedded_hal::delay::DelayNs;
+
 use hal::{
     clock::{Strict, SysclkFreq, UART_PLL_FREQ},
     pac,
@@ -57,5 +59,9 @@ fn main() -> ! {
 
     display.flush().unwrap();
 
-    loop {}
+    // Create a blocking delay function based on the current cpu frequency
+    let mut d = bl602_hal::delay::McycleDelay::new(clocks.sysclk().0);
+    loop {
+        d.delay_ms(1000);
+    }
 }

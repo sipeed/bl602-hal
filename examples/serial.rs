@@ -3,7 +3,7 @@
 
 use bl602_hal as hal;
 use core::fmt::Write;
-use embedded_hal::delay::DelayUs;
+use embedded_hal::delay::DelayNs;
 use hal::{
     clock::{Strict, SysclkFreq, UART_PLL_FREQ},
     pac,

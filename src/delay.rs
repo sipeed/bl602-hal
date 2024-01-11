@@ -46,6 +46,11 @@ impl McycleDelay {
         let elapsed_cycles = Self::cycles_since(previous_cycle_count);
         (elapsed_cycles * 1000) / self.core_frequency as u64
     }
+
+    pub fn us_since(&mut self, previous_cycle_count: u64) -> u64 {
+        let elapsed_cycles = Self::cycles_since(previous_cycle_count);
+        (elapsed_cycles * 1_000_000) / self.core_frequency as u64
+    }
 }
 
 // embedded-hal 1.0 traits

@@ -103,7 +103,7 @@ pub struct I2c<I2C, PINS> {
     i2c: I2C,
     /// sda and scl pins for this i2c interface
     pins: PINS,
-    /// timeout (in milliseconds)
+    /// timeout (in microseconds)
     timeout: u16,
 }
 
@@ -178,8 +178,8 @@ where
         (self.i2c, self.pins)
     }
 
-    /// Set the timeout (in milliseconds) when waiting for fifo (rx and tx).
-    /// This defaults to 2048
+    /// Set the timeout (in microseconds) when waiting for fifo (rx and tx).
+    /// This defaults to 2000us (2 milliseconds)
     pub fn set_timeout(&mut self, timeout: u16) {
         self.timeout = timeout;
     }
@@ -246,7 +246,7 @@ where
         for value in tmp.iter_mut() {
             let start_time = McycleDelay::get_cycle_count();
             while self.i2c.i2c_fifo_config_1.read().rx_fifo_cnt().bits() == 0 {
-                if delay.ms_since(start_time) > self.timeout.into() {
+                if delay.us_since(start_time) > self.timeout.into() {
                     return Err(Error::Timeout);
                 }
             }
@@ -315,7 +315,7 @@ where
         for value in tmp.iter() {
             let start_time = McycleDelay::get_cycle_count();
             while self.i2c.i2c_fifo_config_1.read().tx_fifo_cnt().bits() == 0 {
-                if delay.ms_since(start_time) > self.timeout.into() {
+                if delay.us_since(start_time) > self.timeout.into() {
                     return Err(Error::Timeout);
                 }
             }
@@ -327,7 +327,7 @@ where
         let start_time = McycleDelay::get_cycle_count();
         while self.i2c.i2c_fifo_config_1.read().tx_fifo_cnt().bits() < 2 {
             // wait for write fifo to be empty
-            if delay.ms_since(start_time) > self.timeout.into() {
+            if delay.us_since(start_time) > self.timeout.into() {
                 return Err(Error::Timeout);
             }
         }
@@ -335,7 +335,7 @@ where
         let start_time = McycleDelay::get_cycle_count();
         while self.i2c.i2c_bus_busy.read().sts_i2c_bus_busy().bit_is_set() {
             // wait for transfer to finish
-            if delay.ms_since(start_time) > self.timeout.into() {
+            if delay.us_since(start_time) > self.timeout.into() {
                 return Err(Error::Timeout);
             }
         }

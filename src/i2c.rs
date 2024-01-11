@@ -99,8 +99,11 @@ where
 
 /// I2C peripheral operating in master mode supporting seven bit addressing
 pub struct I2c<I2C, PINS> {
+    /// i2c peripheral instance
     i2c: I2C,
+    /// sda and scl pins for this i2c interface
     pins: PINS,
+    /// timeout (in milliseconds)
     timeout: u16,
 }
 
@@ -175,8 +178,7 @@ where
         (self.i2c, self.pins)
     }
 
-    /// Set the timeout when waiting for fifo (rx and tx).
-    /// It's not a time unit but the number of cycles to wait.
+    /// Set the timeout (in milliseconds) when waiting for fifo (rx and tx).
     /// This defaults to 2048
     pub fn set_timeout(&mut self, timeout: u16) {
         self.timeout = timeout;

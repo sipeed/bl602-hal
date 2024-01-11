@@ -323,6 +323,14 @@ where
         }
 
         let start_time = McycleDelay::get_cycle_count();
+        while self.i2c.i2c_fifo_config_1.read().tx_fifo_cnt().bits() < 2 {
+            // wait for write fifo to be empty
+            if delay.ms_since(start_time) > self.timeout.into() {
+                return Err(Error::Timeout);
+            }
+        }
+
+        let start_time = McycleDelay::get_cycle_count();
         while self.i2c.i2c_bus_busy.read().sts_i2c_bus_busy().bit_is_set() {
             // wait for transfer to finish
             if delay.ms_since(start_time) > self.timeout.into() {

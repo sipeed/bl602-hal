@@ -3,16 +3,15 @@ on: [push, pull_request]
 name: Clippy check
 jobs:
   clippy_check:
-    runs-on: ubuntu-latest
+    name: Run Clippy
+    runs-on: ubuntu-20.04
+    env:
+      RUSTFLAGS: "-D warnings"
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
           target: riscv32imac-unknown-none-elf
-          override: true
           components: clippy
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - run: cargo clippy --workspace --examples -- -Dwarnings
+      - run: cargo clippy --workspace --examples --all-features -- -Dwarnings

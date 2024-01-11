@@ -2,7 +2,7 @@
 #![no_main]
 
 use bl602_hal as hal;
-use embedded_hal::delay::DelayUs;
+use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use hal::{
     clock::{Strict, SysclkFreq, UART_PLL_FREQ},

@@ -227,6 +227,11 @@ pub struct Output<MODE> {
     _mode: PhantomData<MODE>,
 }
 
+/// PWM mode (type state)
+pub struct Pwm<MODE> {
+    _mode: PhantomData<MODE>,
+}
+
 /// UART pin mode (type state)
 pub struct Uart;
 
@@ -344,6 +349,24 @@ macro_rules! impl_glb {
                 /// Configures the pin to operate as a pull-down input pin.
                 pub fn into_pull_down_input(self) -> $Pini<Input<PullDown>> {
                     self.into_pin_with_mode(11, false, true, true)
+                }
+
+                // Do pull-up/pull-down/hi-z actually do anything for PWM?
+
+                /// Configures the pin to operate as a pull-down PWM pin.
+                pub fn into_pull_down_pwm(self) -> $Pini<Pwm<PullDown>> {
+                    // `bl602_pac::glb::gpio_cfgctln::REG_GPIO_n_FUNC_SEL_A::PWM_CHn`
+                    self.into_pin_with_mode(8, false, true, true)
+                }
+
+                /// Configures the pin to operate as a pull-up PWM pin.
+                pub fn into_pull_up_pwm(self) -> $Pini<Pwm<PullUp>> {
+                    self.into_pin_with_mode(8, false, true, true)
+                }
+
+                /// Configures the pin to operate as a Hi-Z floating PWM pin.
+                pub fn into_floating_pwm(self) -> $Pini<Pwm<Floating>> {
+                    self.into_pin_with_mode(8, false, false, true)
                 }
 
                 paste::paste! {

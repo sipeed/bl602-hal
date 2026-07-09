@@ -105,6 +105,8 @@ pub struct I2c<I2C, PINS> {
     pins: PINS,
     /// timeout (in microseconds)
     timeout: u16,
+    /// system clock frequency
+    sysclk: Hertz,
 }
 
 impl<PINS> I2c<pac::I2C, PINS>
@@ -171,6 +173,7 @@ where
             i2c,
             pins,
             timeout: 2048,
+            sysclk: clocks.sysclk(),
         }
     }
 
@@ -240,9 +243,7 @@ where
                 .set_bit()
         });
 
-        // We don't know what the CPU frequency is. Assume maximum of 192Mhz
-        // This might make our timeouts longer than expected if frequency is lower.
-        let mut delay = McycleDelay::new(192_000_000);
+        let mut delay = McycleDelay::new(self.sysclk.0);
         for value in tmp.iter_mut() {
             let start_time = McycleDelay::get_cycle_count();
             while self.i2c.i2c_fifo_config_1.read().rx_fifo_cnt().bits() == 0 {
@@ -309,9 +310,7 @@ where
                 .set_bit()
         });
 
-        // We don't know what the CPU frequency is. Assume maximum of 192Mhz
-        // This might make our timeouts longer than expected if frequency is lower.
-        let mut delay = McycleDelay::new(192_000_000);
+        let mut delay = McycleDelay::new(self.sysclk.0);
         for value in tmp.iter() {
             let start_time = McycleDelay::get_cycle_count();
             while self.i2c.i2c_fifo_config_1.read().tx_fifo_cnt().bits() == 0 {
@@ -343,6 +342,76 @@ where
         self.i2c
             .i2c_config
             .modify(|_r, w| w.cr_i2c_m_en().clear_bit());
+
+        Ok(())
+    }
+
+    fn write_read(
+        &mut self,
+        address: i2cAlpha::SevenBitAddress,
+        subaddr: &[u8],
+        buffer: &mut [u8],
+    ) -> Result<(), Self::Error> {
+        let fifo_config = self.i2c.i2c_fifo_config_0.read();
+
+        if fifo_config.rx_fifo_overflow().bit_is_set() {
+            self.i2c
+                .i2c_fifo_config_0
+                .write(|w| w.rx_fifo_clr().set_bit());
+            return Err(Error::RxOverflow);
+        } else if fifo_config.rx_fifo_underflow().bit_is_set() {
+            self.i2c
+                .i2c_fifo_config_0
+                .write(|w| w.rx_fifo_clr().set_bit());
+            return Err(Error::RxUnderflow);
+        }
+
+        let count = buffer.len() / 4 + if buffer.len() % 4 > 0 { 1 } else { 0 };
+        let mut word_buffer = [0u32; 255];
+        let tmp = &mut word_buffer[..count];
+
+        self.i2c.i2c_config.modify(|_r, w| unsafe {
+            w.cr_i2c_pkt_len()
+                .bits(buffer.len() as u8 - 1u8)
+                .cr_i2c_slv_addr()
+                .bits(address)
+                .cr_i2c_sub_addr_en()
+                .set_bit()
+                .cr_i2c_sub_addr_bc()
+                .bits(subaddr.len() as u8 - 1u8)
+                .cr_i2c_scl_sync_en()
+                .set_bit()
+                .cr_i2c_pkt_dir()
+                .set_bit() // = read
+                .cr_i2c_m_en()
+                .set_bit()
+        });
+
+	let mut subaddr_bytes = [0u8; 4];
+	subaddr_bytes[..subaddr.len()].copy_from_slice(subaddr);
+	self.i2c.i2c_sub_addr.write(|w| unsafe {
+	    w.bits(u32::from_le_bytes(subaddr_bytes))
+	});
+
+        let mut delay = McycleDelay::new(self.sysclk.0);
+        for value in tmp.iter_mut() {
+            let start_time = McycleDelay::get_cycle_count();
+            while self.i2c.i2c_fifo_config_1.read().rx_fifo_cnt().bits() == 0 {
+                if delay.us_since(start_time) > self.timeout.into() {
+                    return Err(Error::Timeout);
+                }
+            }
+            *value = self.i2c.i2c_fifo_rdata.read().i2c_fifo_rdata().bits();
+        }
+
+        self.i2c
+            .i2c_config
+            .modify(|_r, w| w.cr_i2c_m_en().clear_bit());
+
+        for (idx, value) in buffer.iter_mut().enumerate() {
+            let shift_by = (idx % 4 * 8) as u32;
+            *value = (word_buffer[idx / 4].overflowing_shr(shift_by).0 & 0xff) as u8;
+        }
 
         Ok(())
     }

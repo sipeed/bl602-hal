@@ -42,6 +42,7 @@ pub enum SysclkFreq {
     Pll48Mhz = 48_000_000,
     Pll120Mhz = 120_000_000,
     Pll160Mhz = 160_000_000,
+    Pll192Mhz = 192_000_000,
 }
 
 /// Frozen clock frequencies
